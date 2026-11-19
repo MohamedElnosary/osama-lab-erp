@@ -391,13 +391,11 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    # حساب عدد الأذونات المعتمدة من المدير العام والجاهزة للصرف لأمين المخزن
     approved_count_res = supabase.table("transfer_requests").select("id", count="exact").eq("status", "approved_ready_to_issue").execute()
     approved_badge = f" ({approved_count_res.count})" if (approved_count_res.count and approved_count_res.count > 0) else ""
 
     menu_options = []
     if role == "main_storekeeper":
-        # القوائم الخمس الخاصة بأمين المخزن الرئيسي فقط
         menu_options = [
             "🏢 المخزن الرئيسي",
             "🛒 الطلبيات",
@@ -419,7 +417,6 @@ with st.sidebar:
             "👥 إدارة المستخدمين والصلاحيات"
         ]
     else:
-        # مشرف الوحدة / الفرع
         menu_options = [
             "🧪 المخازن الفرعية",
             "🔄 أذونات الصرف"
@@ -627,7 +624,8 @@ elif selected_page == "🏢 المخزن الرئيسي":
                     "التصنيف": "محاليل وكواشف" if k[2] == "reagent" else "مستهلكات",
                     "الشركات المتوفرة": " + ".join(v["companies"]),
                     "إجمالي العلب/الباكيت": v["kits"],
-                    f"إجمالي الرصيد ({k[3]})": v["tests"],
+                    "إجمالي الرصيد": v["tests"],
+                    "الوحدة": k[3],
                     "الاستهلاك الشهري الكلي": rate,
                     "يكفي لمدة (شهور)": f"{months_cov} شهر" if rate > 0 else "غير محدد",
                     "القيمة المالية (ج.م)": round(v["value"], 2)
@@ -640,14 +638,16 @@ elif selected_page == "🏢 المخزن الرئيسي":
             for r in rows:
                 b = r["batches"]
                 it = b["items"]
+                sub_u = "اختبار" if it["sub_unit_name"] == "تست" else it["sub_unit_name"]
                 det_list.append({
                     "الصنف": it['name'],
                     "الشركة الموردة": b["suppliers"]["name"],
                     "رقم التشغيلة": b["lot_number"],
                     "تاريخ الصلاحية": b["expiry_date"],
                     "العلب المتاحة": float(r["kits_available"]),
-                    "الاختبارات/القطع المتاحة": float(r["tests_available"]),
-                    "سعر الاختبار/القطعة": float(b["unit_price_per_test"]),
+                    "الكمية المتاحة": float(r["tests_available"]),
+                    "الوحدة": sub_u,
+                    "سعر الوحدة": float(b["unit_price_per_test"]),
                     "إجمالي القيمة": round(float(r["tests_available"]) * float(b["unit_price_per_test"]), 2)
                 })
             df_det = pd.DataFrame(det_list).sort_values(["الصنف", "تاريخ الصلاحية"])
@@ -658,15 +658,35 @@ elif selected_page == "🏢 المخزن الرئيسي":
             st.dataframe(df_det, use_container_width=True, hide_index=True)
 
 # =========================================================================
-# 3. الطلبيات
+# 3. الطلبيات (فلاتر بالوحدة/الفرع والصنف + عمود موحد للعجز + عمود للوحدة)
 # =========================================================================
 elif selected_page == "🛒 الطلبيات":
     render_page_header("🛒 الطلبيات")
     
-    months_cover = st.slider("حدد عدد الشهور المطلوب تغطيتها في طلبية الشراء:", min_value=1, max_value=12, value=3)
-    
     items_df = get_df("items")
-    inv_res = supabase.table("inventory").select("tests_available, batches(item_id)").eq("location_id", 1).execute()
+    locs_df = get_df("locations")
+    rates_df = get_df("location_consumption_rates")
+    
+    # فلاتر التصفية في الطلبيات
+    f1, f2, f3 = st.columns(3)
+    with f1:
+        sub_locs = locs_df[locs_df["location_type"] != "main"] if not locs_df.empty else pd.DataFrame()
+        loc_options = ["الكل (إجمالي المعمل)"] + (sub_locs["name"].tolist() if not sub_locs.empty else [])
+        sel_order_loc = st.selectbox("🏥 تصفية حسب الوحدة / الفرع:", loc_options)
+    with f2:
+        cat_filter = st.selectbox("📂 تصفية حسب التصنيف:", ["الكل", "محاليل وكواشف", "مستهلكات"])
+    with f3:
+        item_names_list = ["الكل"] + (sorted(items_df["name"].unique().tolist()) if not items_df.empty else [])
+        sel_order_item = st.selectbox("🧪 تصفية حسب الصنف / الاختبار:", item_names_list)
+
+    months_cover = st.slider("📅 حدد عدد الشهور المطلوب تغطيتها في الطلبية:", min_value=1, max_value=12, value=3)
+    
+    # جلب الأرصدة الحالية (من المخزن الرئيسي لو "الكل"، أو من مخزن الوحدة/الفرع المختار)
+    if sel_order_loc == "الكل (إجمالي المعمل)":
+        inv_res = supabase.table("inventory").select("tests_available, batches(item_id)").eq("location_id", 1).execute()
+    else:
+        target_loc_id = int(sub_locs[sub_locs["name"] == sel_order_loc].iloc[0]["id"])
+        inv_res = supabase.table("inventory").select("tests_available, batches(item_id)").eq("location_id", target_loc_id).execute()
     
     stock_by_item = {}
     for r in (inv_res.data or []):
@@ -676,28 +696,58 @@ elif selected_page == "🛒 الطلبيات":
     
     order_rows = []
     for _, it in items_df.iterrows():
-        rate = float(it["monthly_consumption_rate"] or 0)
+        iid = int(it["id"])
+        it_cat_ar = "محاليل وكواشف" if it["category"] == "reagent" else "مستهلكات"
+        
+        # تطبيق فلتر التصنيف وفلتر الصنف
+        if cat_filter != "الكل" and it_cat_ar != cat_filter:
+            continue
+        if sel_order_item != "الكل" and it["name"] != sel_order_item:
+            continue
+        
+        # تحديد معدل الاستهلاك الشهري بناءً على الفلتر (كل المعمل أم وحدة/فرع محدد)
+        if sel_order_loc == "الكل (إجمالي المعمل)":
+            rate = float(it["monthly_consumption_rate"] or 0)
+            stock_col_title = "الرصيد الحالي بالمخزن الرئيسي"
+        else:
+            if not rates_df.empty:
+                match_r = rates_df[(rates_df["location_id"] == target_loc_id) & (rates_df["item_id"] == iid)]
+                rate = float(match_r.iloc[0]["monthly_tests_rate"]) if not match_r.empty else 0.0
+            else:
+                rate = 0.0
+            stock_col_title = f"الرصيد الحالي في ({sel_order_loc})"
+
         if rate > 0:
             needed_total = rate * months_cover
-            current_stock = stock_by_item.get(it["id"], 0)
+            current_stock = stock_by_item.get(iid, 0)
             deficit = max(0, needed_total - current_stock)
-            sub_u = "اختبار" if it["sub_unit_name"] == "تست" else it["sub_unit_name"]
+            unit_label = "اختبار" if it["sub_unit_name"] == "تست" else it["sub_unit_name"]
+            
             if deficit > 0:
                 order_rows.append({
-                    "الصنف": it['name'],
-                    "الاستهلاك الشهري الكلي": rate,
+                    "الصنف": it["name"],
+                    "التصنيف": it_cat_ar,
+                    "الاستهلاك الشهري": rate,
                     f"الاحتياج لـ {months_cover} شهور": needed_total,
-                    "الرصيد الحالي بالمخزن الرئيسي": current_stock,
-                    f"العجز المطلوب شراؤه ({sub_u})": deficit
+                    stock_col_title: current_stock,
+                    "العجز المطلوب شراؤه": deficit,
+                    "الوحدة": unit_label
                 })
     
     if order_rows:
         df_ord = pd.DataFrame(order_rows)
         st.dataframe(df_ord, use_container_width=True, hide_index=True)
         csv = df_ord.to_csv(index=False).encode("utf-8-sig")
-        st.download_button("📥 تحميل طلبية الشراء (Excel / CSV)", data=csv, file_name=f"purchase_order_{months_cover}_months.csv", mime="text/csv", type="primary")
+        file_tag = "all_lab" if sel_order_loc == "الكل (إجمالي المعمل)" else sel_order_loc
+        st.download_button(
+            "📥 تحميل الطلبية (Excel / CSV)", 
+            data=csv, 
+            file_name=f"order_{file_tag}_{months_cover}_months.csv", 
+            mime="text/csv", 
+            type="primary"
+        )
     else:
-        st.success("✅ الأرصدة الحالية في المخزن الرئيسي تغطي الفترة المحددة بالكامل بناءً على معدلات الاستهلاك المسجلة!")
+        st.success("✅ لا يوجد عجز مطلوب شراؤه بناءً على الفلاتر والمدة المحددة!")
 
 # =========================================================================
 # 4. المخازن الفرعية
@@ -1103,7 +1153,7 @@ elif selected_page == "⚙️ التكويد":
             i_name = c1.text_input("اسم الصنف / التحليل (مثال: ALT أو Gloves أو Syringe)", key="new_i_name")
             i_cat = c2.selectbox("التصنيف", ["reagent", "consumable"], format_func=lambda x: "محاليل وكواشف (Reagent)" if x == "reagent" else "مستهلكات طبية (Consumable)", key="new_i_cat")
             i_unit = c1.text_input("وحدة التوريد الكبرى (مثال: علبة، باكيت، راك)", value="علبة", key="new_i_unit")
-            i_sub = c2.text_input("وحدة القياس الصغرى (مثال: اختبار، قطعة، أنبوبة)", value="اختبار", key="new_i_sub")
+            i_sub = c2.text_input("وحدة القياس الصغرى (مثال: اختبار، سرنجة، جوانتي)", value="اختبار", key="new_i_sub")
 
             selected_targets = st.multiselect(
                 "🏥 المخازن الفرعية والوحدات التي تستخدم هذا الصنف:",
