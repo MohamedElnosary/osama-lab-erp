@@ -295,7 +295,8 @@ def render_styled_table(headers: list, rows_data: list, col_widths: list = None)
 
     hdr_cols = st.columns(widths)
     for idx, h_title in enumerate(headers):
-        hdr_cols[idx].markdown(f"<div class='tbl-hdr-cell'>{h_title}</div>", unsafe_allow_html=True)
+        with hdr_cols[idx]:
+            st.markdown(f"<div class='tbl-hdr-cell'>{h_title}</div>", unsafe_allow_html=True)
 
     for r_item in rows_data:
         row_cols = st.columns(widths)
@@ -305,10 +306,11 @@ def render_styled_table(headers: list, rows_data: list, col_widths: list = None)
                 val_txt, extra_style = cell_val
             else:
                 val_txt = str(cell_val)
-            row_cols[idx].markdown(
-                f"<div class='tbl-row-cell' style='{extra_style}'>{val_txt}</div>",
-                unsafe_allow_html=True
-            )
+            with row_cols[idx]:
+                st.markdown(
+                    f"<div class='tbl-row-cell' style='{extra_style}'>{val_txt}</div>",
+                    unsafe_allow_html=True
+                )
 
 def df_to_styled_table(df: pd.DataFrame, col_widths: list = None):
     """تحويل DataFrame مباشرة إلى الجدول الموحد"""
@@ -770,7 +772,7 @@ if selected_page == "📊 الرئيسية":
             st.info("لا توجد أرصدة في المخزن الرئيسي حالياً.")
 
 # =========================================================================
-# 2. المخزن الرئيسي (بالستايل الجدولي الموحد)
+# 2. المخزن الرئيسي
 # =========================================================================
 elif selected_page == "🏢 المخزن الرئيسي":
     render_page_header("🏢 المخزن الرئيسي")
@@ -1058,7 +1060,8 @@ elif selected_page == "🧪 المخازن الفرعية":
         ]
         s_hdr_cols = st.columns(sub_col_widths)
         for idx, h_title in enumerate(sub_headers):
-            s_hdr_cols[idx].markdown(f"<div class='tbl-hdr-cell'>{h_title}</div>", unsafe_allow_html=True)
+            with s_hdr_cols[idx]:
+                st.markdown(f"<div class='tbl-hdr-cell'>{h_title}</div>", unsafe_allow_html=True)
 
         for row in final_sub_rows:
             b = row["batches"]
@@ -1069,12 +1072,18 @@ elif selected_page == "🧪 المخازن الفرعية":
             avail_txt = f"{int(row['kits_available'])} {it['unit_name']} ({int(row['tests_available'])} {sub_u})"
 
             s_row_cols = st.columns(sub_col_widths)
-            s_row_cols[0].markdown(f"<div class='tbl-row-cell' style='color:#0e4d92;'>{it['name']}</div>", unsafe_allow_html=True)
-            s_row_cols[1].markdown(f"<div class='tbl-row-cell'>{cat_badge}</div>", unsafe_allow_html=True)
-            s_row_cols[2].markdown(f"<div class='tbl-row-cell'>{sup['name']}</div>", unsafe_allow_html=True)
-            s_row_cols[3].markdown(f"<div class='tbl-row-cell' style='color:#0d9488;'>{avail_txt}</div>", unsafe_allow_html=True)
-            s_row_cols[4].markdown(f"<div class='tbl-row-cell' dir='ltr'>{b['lot_number']}</div>", unsafe_allow_html=True)
-            s_row_cols[5].markdown(f"<div class='tbl-row-cell' dir='ltr'>{b['expiry_date']}</div>", unsafe_allow_html=True)
+            with s_row_cols[0]:
+                st.markdown(f"<div class='tbl-row-cell' style='color:#0e4d92;'>{it['name']}</div>", unsafe_allow_html=True)
+            with s_row_cols[1]:
+                st.markdown(f"<div class='tbl-row-cell'>{cat_badge}</div>", unsafe_allow_html=True)
+            with s_row_cols[2]:
+                st.markdown(f"<div class='tbl-row-cell'>{sup['name']}</div>", unsafe_allow_html=True)
+            with s_row_cols[3]:
+                st.markdown(f"<div class='tbl-row-cell' style='color:#0d9488;'>{avail_txt}</div>", unsafe_allow_html=True)
+            with s_row_cols[4]:
+                st.markdown(f"<div class='tbl-row-cell' dir='ltr'>{b['lot_number']}</div>", unsafe_allow_html=True)
+            with s_row_cols[5]:
+                st.markdown(f"<div class='tbl-row-cell' dir='ltr'>{b['expiry_date']}</div>", unsafe_allow_html=True)
 
             with s_row_cols[6]:
                 kits_pull = st.number_input(
@@ -1186,16 +1195,23 @@ elif selected_page.startswith("📦 أذونات الصرف المعتمدة"):
         app_headers = ["صرف إلى", "الصنف", "الشركة", "الكمية المعتمدة", "رقم التشغيلة", "الصلاحية", "الإجراء"]
         a_hdr_cols = st.columns(app_widths)
         for idx, h_t in enumerate(app_headers):
-            a_hdr_cols[idx].markdown(f"<div class='tbl-hdr-cell'>{h_t}</div>", unsafe_allow_html=True)
+            with a_hdr_cols[idx]:
+                st.markdown(f"<div class='tbl-hdr-cell'>{h_t}</div>", unsafe_allow_html=True)
 
         for req in approved.data:
             r_cols = st.columns(app_widths)
-            r_cols[0].markdown(f"<div class='tbl-row-cell' style='color:#0e4d92;'>{req['locations']['name']}</div>", unsafe_allow_html=True)
-            r_cols[1].markdown(f"<div class='tbl-row-cell'>{req['items']['name']}</div>", unsafe_allow_html=True)
-            r_cols[2].markdown(f"<div class='tbl-row-cell'>{req['suppliers']['name']}</div>", unsafe_allow_html=True)
-            r_cols[3].markdown(f"<div class='tbl-row-cell' style='color:#0284c7;'>{req['kits_requested']} {req['items']['unit_name']} ({req['tests_requested']} اختبار)</div>", unsafe_allow_html=True)
-            r_cols[4].markdown(f"<div class='tbl-row-cell' dir='ltr'>{req['batches']['lot_number']}</div>", unsafe_allow_html=True)
-            r_cols[5].markdown(f"<div class='tbl-row-cell' dir='ltr'>{req['batches']['expiry_date']}</div>", unsafe_allow_html=True)
+            with r_cols[0]:
+                st.markdown(f"<div class='tbl-row-cell' style='color:#0e4d92;'>{req['locations']['name']}</div>", unsafe_allow_html=True)
+            with r_cols[1]:
+                st.markdown(f"<div class='tbl-row-cell'>{req['items']['name']}</div>", unsafe_allow_html=True)
+            with r_cols[2]:
+                st.markdown(f"<div class='tbl-row-cell'>{req['suppliers']['name']}</div>", unsafe_allow_html=True)
+            with r_cols[3]:
+                st.markdown(f"<div class='tbl-row-cell' style='color:#0284c7;'>{req['kits_requested']} {req['items']['unit_name']} ({req['tests_requested']} اختبار)</div>", unsafe_allow_html=True)
+            with r_cols[4]:
+                st.markdown(f"<div class='tbl-row-cell' dir='ltr'>{req['batches']['lot_number']}</div>", unsafe_allow_html=True)
+            with r_cols[5]:
+                st.markdown(f"<div class='tbl-row-cell' dir='ltr'>{req['batches']['expiry_date']}</div>", unsafe_allow_html=True)
             with r_cols[6]:
                 if st.button("📦 تنفيذ الصرف", key=f"iss_store_{req['id']}", type="primary", use_container_width=True):
                     m_inv = supabase.table("inventory").select("*").eq("location_id", 1).eq("batch_id", req["batch_id"]).execute().data[0]
@@ -1417,7 +1433,8 @@ elif selected_page == "✍️ الموافقات":
             ]
             hdr_cols = st.columns(col_widths)
             for idx, h_title in enumerate(headers):
-                hdr_cols[idx].markdown(f"<div class='tbl-hdr-cell'>{h_title}</div>", unsafe_allow_html=True)
+                with hdr_cols[idx]:
+                    st.markdown(f"<div class='tbl-hdr-cell'>{h_title}</div>", unsafe_allow_html=True)
 
             for req in filtered_pending:
                 to_loc_id = int(req["to_location_id"])
@@ -1436,14 +1453,22 @@ elif selected_page == "✍️ الموافقات":
                 qty_txt = f"{req['kits_requested']} {req['items']['unit_name']} ({int(req_tests)} {sub_u})"
 
                 row_cols = st.columns(col_widths)
-                row_cols[0].markdown(f"<div class='tbl-row-cell' style='color:#0e4d92;'>{req['locations']['name']}</div>", unsafe_allow_html=True)
-                row_cols[1].markdown(f"<div class='tbl-row-cell'>{req['items']['name']}</div>", unsafe_allow_html=True)
-                row_cols[2].markdown(f"<div class='tbl-row-cell'>{req['suppliers']['name']}</div>", unsafe_allow_html=True)
-                row_cols[3].markdown(f"<div class='tbl-row-cell' style='color:#0284c7;'>{qty_txt}</div>", unsafe_allow_html=True)
-                row_cols[4].markdown(f"<div class='tbl-row-cell' style='color:#0d9488;'>{req_coverage_txt}</div>", unsafe_allow_html=True)
-                row_cols[5].markdown(f"<div class='tbl-row-cell'>{cur_stock_txt}</div>", unsafe_allow_html=True)
-                row_cols[6].markdown(f"<div class='tbl-row-cell' dir='ltr'>{req['batches']['lot_number']}</div>", unsafe_allow_html=True)
-                row_cols[7].markdown(f"<div class='tbl-row-cell' dir='ltr'>{req['batches']['expiry_date']}</div>", unsafe_allow_html=True)
+                with row_cols[0]:
+                    st.markdown(f"<div class='tbl-row-cell' style='color:#0e4d92;'>{req['locations']['name']}</div>", unsafe_allow_html=True)
+                with row_cols[1]:
+                    st.markdown(f"<div class='tbl-row-cell'>{req['items']['name']}</div>", unsafe_allow_html=True)
+                with row_cols[2]:
+                    st.markdown(f"<div class='tbl-row-cell'>{req['suppliers']['name']}</div>", unsafe_allow_html=True)
+                with row_cols[3]:
+                    st.markdown(f"<div class='tbl-row-cell' style='color:#0284c7;'>{qty_txt}</div>", unsafe_allow_html=True)
+                with row_cols[4]:
+                    st.markdown(f"<div class='tbl-row-cell' style='color:#0d9488;'>{req_coverage_txt}</div>", unsafe_allow_html=True)
+                with row_cols[5]:
+                    st.markdown(f"<div class='tbl-row-cell'>{cur_stock_txt}</div>", unsafe_allow_html=True)
+                with row_cols[6]:
+                    st.markdown(f"<div class='tbl-row-cell' dir='ltr'>{req['batches']['lot_number']}</div>", unsafe_allow_html=True)
+                with row_cols[7]:
+                    st.markdown(f"<div class='tbl-row-cell' dir='ltr'>{req['batches']['expiry_date']}</div>", unsafe_allow_html=True)
                 
                 with row_cols[8]:
                     btn_a, btn_r = st.columns(2)
@@ -1472,7 +1497,7 @@ elif selected_page == "✍️ الموافقات":
                 st.rerun()
 
 # =========================================================================
-# 9. التقارير (بالستايل الجدولي الموحد)
+# 9. التقارير
 # =========================================================================
 elif selected_page == "📈 التقارير":
     render_page_header("📈 التقارير")
@@ -1546,7 +1571,7 @@ elif selected_page == "📈 التقارير":
             st.info("لم يتم تسجيل فواتير توريد بعد.")
 
 # =========================================================================
-# 10. التكويد (جداول بالستايل الموحد)
+# 10. التكويد
 # =========================================================================
 elif selected_page == "⚙️ التكويد":
     render_page_header("⚙️ التكويد")
@@ -1886,7 +1911,7 @@ elif selected_page == "⚙️ التكويد":
         df_to_styled_table(disp_locs)
 
 # =========================================================================
-# 11. إدارة المستخدمين والصلاحيات (بالستايل الجدولي الموحد)
+# 11. إدارة المستخدمين والصلاحيات
 # =========================================================================
 elif selected_page == "👥 إدارة المستخدمين والصلاحيات":
     render_page_header("👥 إدارة المستخدمين والصلاحيات")
