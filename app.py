@@ -10,7 +10,7 @@ from datetime import datetime, date, timedelta
 # إعدادات الصفحة والتنسيق العام (واجهة عربية احترافية)
 # =========================================================================
 st.set_page_config(
-    page_title="معمل د. أسامة عبدالمتعال",
+    page_title="معامل ا.د/ أسامة عبدالمتعال",
     page_icon="🧬",
     layout="wide",
     initial_sidebar_state="expanded"
