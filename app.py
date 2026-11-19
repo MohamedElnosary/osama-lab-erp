@@ -120,7 +120,7 @@ with st.sidebar:
     if role in ["chairman", "general_manager", "main_storekeeper"]:
         menu_options.append("🛒 طلبيات الشراء من الشركات")
         menu_options.append("📈 التقارير المالية ومقارنة الأسعار")
-        menu_options.append("⚙️ تكويد الأصناف والشركات")
+        menu_options.append("⚙️ تكويد الأصناف والشركات والفروع")
     if role in ["chairman", "general_manager"]:
         menu_options.append("👥 إدارة المستخدمين والصلاحيات")
 
@@ -132,7 +132,7 @@ with st.sidebar:
 
 # دوال مساعدة لجلب البيانات
 def get_df(table_name, select_query="*"):
-    res = supabase.table(table_name).select(select_query).execute()
+    res = supabase.table(table_name).select(select_query).order("id").execute()
     return pd.DataFrame(res.data) if res.data else pd.DataFrame()
 
 # =========================================================================
@@ -202,7 +202,7 @@ if selected_page == "📊 لوحة القيادة والذكاء الاصطنا�
             df_s = pd.DataFrame([{
                 "الشركة": r["batches"]["suppliers"]["name"],
                 "القيمة": r["tests_available"] * r["batches"]["unit_price_per_test"]
-            } for r in inv_data if r["tests_available"] > 0])
+            } for r in inv_data if r["tests_available"] > 0 and r.get("batches")])
             if not df_s.empty:
                 sup_val = df_s.groupby("الشركة")["القيمة"].sum().reset_index()
                 fig2 = px.pie(sup_val, names="الشركة", values="القيمة", hole=0.4)
@@ -223,7 +223,7 @@ if selected_page == "📊 لوحة القيادة والذكاء الاصطنا�
             
     with ai_col2:
         st.markdown("#### 🔮 التنبؤ الذكي بكفاية المخزون الرئيسي")
-        main_inv = [r for r in inv_data if r["location_id"] == 1 and r["tests_available"] > 0]
+        main_inv = [r for r in inv_data if r["location_id"] == 1 and r["tests_available"] > 0 and r.get("batches")]
         if main_inv:
             summary_map = {}
             for r in main_inv:
@@ -329,7 +329,7 @@ elif selected_page == "📥 توريد فاتورة / إضافة رصيد":
     suppliers_df = get_df("suppliers")
     
     if items_df.empty or suppliers_df.empty:
-        st.warning("⚠️ برجاء إضافة الأصناف والشركات أولاً من صفحة '⚙️ تكويد الأصناف والشركات'.")
+        st.warning("⚠️ برجاء إضافة الأصناف والشركات أولاً من صفحة '⚙️ تكويد الأصناف والشركات والفروع'.")
     else:
         with st.form("receive_batch_form"):
             col1, col2 = st.columns(2)
@@ -389,7 +389,6 @@ elif selected_page == "🔄 طلبات الصرف والموافقات":
     
     t1, t2, t3 = st.tabs(["📝 إنشاء طلبية صرف جديدة (للوحدات والفروع)", "✍️ اعتماد المدير العام", "📦 شاشة الصرف (أمين المخزن الرئيسي)"])
     
-    # --- تبويب 1: إنشاء طلبية ---
     with t1:
         st.subheader("طلب صرف من المخزن الرئيسي")
         locs_df = get_df("locations")
@@ -417,13 +416,11 @@ elif selected_page == "🔄 طلبات الصرف والموافقات":
                 sel_sup = suppliers_df[suppliers_df["name"] == sup_choice].iloc[0]
 
             with c2:
-                # جلب معدل استهلاك الوحدة لهذا الصنف
                 rate_res = supabase.table("location_consumption_rates").select("monthly_tests_rate").eq("location_id", target_loc_id).eq("item_id", int(sel_item["id"])).execute()
                 unit_monthly_rate = float(rate_res.data[0]["monthly_tests_rate"]) if rate_res.data else float(sel_item["monthly_consumption_rate"] or 0)
                 
                 months_needed = st.number_input("المدة المطلوب تغطيتها (بالشهور)", min_value=0.5, max_value=12.0, value=1.0, step=0.5)
                 
-                # البحث عن اللوتات المتاحة في المخزن الرئيسي مرتبة بنظام FEFO
                 avail_batches = supabase.table("inventory").select("*, batches!inner(*)").eq("location_id", 1).eq("batches.item_id", int(sel_item["id"])).eq("batches.supplier_id", int(sel_sup["id"])).gt("kits_available", 0).execute()
                 
                 if avail_batches.data:
@@ -455,7 +452,6 @@ elif selected_page == "🔄 طلبات الصرف والموافقات":
                 else:
                     st.error(f"❌ لا يوجد رصيد متاح في المخزن الرئيسي من ({sel_item['name']}) لشركة ({sel_sup['name']}).")
 
-    # --- تبويب 2: موافقة المدير العام ---
     with t2:
         st.subheader("طلبات الصرف المعلقة بانتظار موافقة المدير العام")
         pending = supabase.table("transfer_requests").select("*, locations!transfer_requests_to_location_id_fkey(name), items(name, variant, unit_name), suppliers(name), batches(lot_number, expiry_date)").eq("status", "pending_gm").execute()
@@ -483,7 +479,6 @@ elif selected_page == "🔄 طلبات الصرف والموافقات":
                                 supabase.table("transfer_requests").update({"status": "rejected"}).eq("id", req["id"]).execute()
                                 st.rerun()
 
-    # --- تبويب 3: صرف أمين المخزن ---
     with t3:
         st.subheader("أذون الصرف المعتمدة وجاهزة للتحويل للمخازن الفرعية")
         approved = supabase.table("transfer_requests").select("*, locations!transfer_requests_to_location_id_fkey(name), items(name, variant, unit_name), suppliers(name), batches(lot_number, expiry_date, tests_per_kit)").eq("status", "approved_ready_to_issue").execute()
@@ -499,286 +494,14 @@ elif selected_page == "🔄 طلبات الصرف والموافقات":
                     with c2:
                         if role in ["main_storekeeper", "general_manager", "chairman"]:
                             if st.button("📦 تنفيذ الصرف الآن", key=f"iss_{req['id']}", type="primary"):
-                                # 1. خصم من المخزن الرئيسي
                                 m_inv = supabase.table("inventory").select("*").eq("location_id", 1).eq("batch_id", req["batch_id"]).execute().data[0]
                                 new_m_kits = float(m_inv["kits_available"]) - req["kits_requested"]
                                 new_m_tests = float(m_inv["tests_available"]) - req["tests_requested"]
                                 supabase.table("inventory").update({"kits_available": max(0, new_m_kits), "tests_available": max(0, new_m_tests)}).eq("id", m_inv["id"]).execute()
                                 
-                                # 2. إضافة للمخزن الفرعي
                                 sub_inv_res = supabase.table("inventory").select("*").eq("location_id", req["to_location_id"]).eq("batch_id", req["batch_id"]).execute()
                                 if sub_inv_res.data:
                                     s_inv = sub_inv_res.data[0]
                                     supabase.table("inventory").update({
                                         "kits_available": float(s_inv["kits_available"]) + req["kits_requested"],
-                                        "tests_available": float(s_inv["tests_available"]) + req["tests_requested"]
-                                    }).eq("id", s_inv["id"]).execute()
-                                else:
-                                    supabase.table("inventory").insert({
-                                        "location_id": req["to_location_id"],
-                                        "batch_id": req["batch_id"],
-                                        "kits_available": float(req["kits_requested"]),
-                                        "tests_available": float(req["tests_requested"])
-                                    }).execute()
-                                
-                                # 3. تحديث حالة الطلب
-                                supabase.table("transfer_requests").update({
-                                    "status": "issued",
-                                    "issued_by": user["id"],
-                                    "issued_at": datetime.now().isoformat()
-                                }).eq("id", req["id"]).execute()
-                                st.success("تم الصرف والتحويل بنجاح!")
-                                st.rerun()
-
-# =========================================================================
-# 5. المخازن الفرعية والسحب اليومي على الأجهزة
-# =========================================================================
-elif selected_page == "🧪 المخازن الفرعية والسحب للأجهزة":
-    st.title("🧪 أرصدة الوحدات والفروع وتسجيل السحب على الأجهزة")
-    
-    locs_df = get_df("locations")
-    sub_locs = locs_df[locs_df["location_type"] != "main"]
-    
-    if role == "unit_supervisor" and user_loc_id != 1:
-        sel_loc_id = user_loc_id
-        st.subheader(f"مخزن: {user_loc_name}")
-    else:
-        loc_name = st.selectbox("اختر الوحدة / الفرع لعرض رصيده وتسجيل السحب:", sub_locs["name"].tolist())
-        sel_loc_id = int(sub_locs[sub_locs["name"] == loc_name].iloc[0]["id"])
-    
-    sub_inv = supabase.table("inventory").select("*, batches(*, items(id, name, variant, unit_name, sub_unit_name), suppliers(id, name))").eq("location_id", sel_loc_id).gt("kits_available", 0).execute()
-    
-    if not sub_inv.data:
-        st.info("لا توجد أرصدة حالياً في هذه الوحدة. يمكنك طلب صرفية من صفحة '🔄 طلبات الصرف والموافقات'.")
-    else:
-        for row in sub_inv.data:
-            b = row["batches"]
-            it = b["items"]
-            sup = b["suppliers"]
-            with st.container(border=True):
-                c1, c2, c3 = st.columns([3, 1, 1])
-                with c1:
-                    st.markdown(f"### {it['name']} ({it['variant']}) — شركة **{sup['name']}**")
-                    st.write(f"**الرصيد المتاح بالوحدة:** `{int(row['kits_available'])}` {it['unit_name']} ({int(row['tests_available'])} {it['sub_unit_name']}) | **Lot:** `{b['lot_number']}` | **الصلاحية:** `{b['expiry_date']}`")
-                with c2:
-                    kits_pull = st.number_input(f"سحب ({it['unit_name']})", min_value=1, max_value=int(row["kits_available"]), value=1, key=f"pull_qty_{row['id']}")
-                with c3:
-                    st.write("")
-                    st.write("")
-                    if st.button("🧪 سحب للجهاز", key=f"pull_btn_{row['id']}", type="primary"):
-                        tests_pulled = kits_pull * b["tests_per_kit"]
-                        cost_pulled = tests_pulled * float(b["unit_price_per_test"])
-                        
-                        # خصم من رصيد الوحدة
-                        supabase.table("inventory").update({
-                            "kits_available": float(row["kits_available"]) - kits_pull,
-                            "tests_available": float(row["tests_available"]) - tests_pulled
-                        }).eq("id", row["id"]).execute()
-                        
-                        # تسجيل حركة الاستهلاك الفعلي
-                        supabase.table("consumption_logs").insert({
-                            "location_id": sel_loc_id,
-                            "batch_id": b["id"],
-                            "item_id": it["id"],
-                            "supplier_id": sup["id"],
-                            "kits_consumed": float(kits_pull),
-                            "tests_consumed": float(tests_pulled),
-                            "cost_incurred": float(cost_pulled),
-                            "logged_by": user["id"]
-                        }).execute()
-                        st.success(f"تم سحب {kits_pull} {it['unit_name']} ({tests_pulled} {it['sub_unit_name']}) وخصمها من رصيد الوحدة.")
-                        st.rerun()
-
-# =========================================================================
-# 6. طلبيات الشراء من الشركات للمخزن الرئيسي
-# =========================================================================
-elif selected_page == "🛒 طلبيات الشراء من الشركات":
-    st.title("🛒 حساب طلبية الشراء الذكية من الشركات الموردة")
-    
-    months_cover = st.slider("حدد عدد الشهور المطلوب تغطيتها في طلبية الشراء:", min_value=1, max_value=12, value=3)
-    
-    items_df = get_df("items")
-    inv_res = supabase.table("inventory").select("tests_available, batches(item_id)").eq("location_id", 1).execute()
-    
-    stock_by_item = {}
-    for r in (inv_res.data or []):
-        iid = r["batches"]["item_id"]
-        stock_by_item[iid] = stock_by_item.get(iid, 0) + float(r["tests_available"])
-    
-    order_rows = []
-    for _, it in items_df.iterrows():
-        rate = float(it["monthly_consumption_rate"] or 0)
-        if rate > 0:
-            needed_total = rate * months_cover
-            current_stock = stock_by_item.get(it["id"], 0)
-            deficit = max(0, needed_total - current_stock)
-            if deficit > 0:
-                order_rows.append({
-                    "الصنف": f"{it['name']} ({it['variant']})",
-                    "الاستهلاك الشهري الكلي": rate,
-                    f"الاحتياج لـ {months_cover} شهور": needed_total,
-                    "الرصيد الحالي بالمخزن الرئيسي": current_stock,
-                    f"العجز المطلوب شراؤه ({it['sub_unit_name']})": deficit
-                })
-    
-    if order_rows:
-        df_ord = pd.DataFrame(order_rows)
-        st.dataframe(df_ord, use_container_width=True, hide_index=True)
-        csv = df_ord.to_csv(index=False).encode("utf-8-sig")
-        st.download_button("📥 تحميل طلبية الشراء (Excel / CSV)", data=csv, file_name=f"purchase_order_{months_cover}_months.csv", mime="text/csv", type="primary")
-    else:
-        st.success("✅ الأرصدة الحالية في المخزن الرئيسي تغطي الفترة المحددة بالكامل بناءً على معدلات الاستهلاك المسجلة!")
-
-# =========================================================================
-# 7. التقارير المالية ومقارنة الأسعار بين الشركات
-# =========================================================================
-elif selected_page == "📈 التقارير المالية ومقارنة الأسعار":
-    st.title("📈 التقارير التفصيلية وتحليل أسعار الشركات")
-    
-    rep_t1, rep_t2 = st.tabs(["📊 تقرير الاستهلاك الكمي والمالي (حسب الفترة والشركة)", "💲 مقارنة وتطور أسعار الشركات الموردة"])
-    
-    with rep_t1:
-        c1, c2 = st.columns(2)
-        start_d = c1.date_input("من تاريخ", value=date.today().replace(day=1))
-        end_d = c2.date_input("إلى تاريخ", value=date.today())
-        
-        logs = supabase.table("consumption_logs").select("*, items(name, variant, sub_unit_name), suppliers(name), locations(name)").gte("consumed_at", str(start_d)).lte("consumed_at", str(end_d) + "T23:59:59").execute()
-        
-        if logs.data:
-            df_l = pd.DataFrame([{
-                "التاريخ": l["consumed_at"][:10],
-                "الوحدة/الفرع": l["locations"]["name"],
-                "الصنف": f"{l['items']['name']} ({l['items']['variant']})",
-                "الشركة الموردة": l["suppliers"]["name"],
-                "الكمية المستهلكة": float(l["tests_consumed"]),
-                "التكلفة الإجمالية (ج.م)": float(l["cost_incurred"])
-            } for l in logs.data])
-            
-            st.subheader("ملخص الاستهلاك مقسماً بالصنف والشركة الموردة")
-            summary = df_l.groupby(["الصنف", "الشركة الموردة"]).agg(
-                إجمالي_الكمية=("الكمية المستهلكة", "sum"),
-                إجمالي_التكلفة_جنيه=("التكلفة الإجمالية (ج.م)", "sum")
-            ).reset_index()
-            summary["متوسط_سعر_التست"] = (summary["إجمالي_التكلفة_جنيه"] / summary["إجمالي_الكمية"]).round(2)
-            st.dataframe(summary, use_container_width=True, hide_index=True)
-            
-            with st.expander("عرض السجل التفصيلي لكل حركة سحب"):
-                st.dataframe(df_l, use_container_width=True, hide_index=True)
-        else:
-            st.info("لا توجد حركات استهلاك مسجلة في هذه الفترة.")
-
-    with rep_t2:
-        st.subheader("تتبع ومقارنة أسعار التوريد عبر الزمن بين الشركات")
-        batches_res = supabase.table("batches").select("*, items(name, variant), suppliers(name)").order("received_date").execute()
-        if batches_res.data:
-            df_b = pd.DataFrame([{
-                "تاريخ التوريد": b["received_date"],
-                "الصنف": f"{b['items']['name']} ({b['items']['variant']})",
-                "الشركة الموردة": b["suppliers"]["name"],
-                "Lot": b["lot_number"],
-                "سعر التست/القطعة (ج.م)": float(b["unit_price_per_test"]),
-                "سعر العلبة (ج.م)": float(b["kit_price"])
-            } for b in batches_res.data])
-            
-            sel_p_item = st.selectbox("اختر الصنف لمقارنة أسعار شركاته:", sorted(df_b["الصنف"].unique().tolist()))
-            sub_b = df_b[df_b["الصنف"] == sel_p_item]
-            
-            fig_p = px.line(sub_b, x="تاريخ التوريد", y="سعر التست/القطعة (ج.م)", color="الشركة الموردة", markers=True, title=f"تطور ومقارنة سعر ({sel_p_item}) بين الشركات")
-            st.plotly_chart(fig_p, use_container_width=True)
-            st.dataframe(sub_b, use_container_width=True, hide_index=True)
-        else:
-            st.info("لم يتم تسجيل فواتير توريد بعد.")
-
-# =========================================================================
-# 8. تكويد الأصناف والشركات ومعدلات الاستهلاك
-# =========================================================================
-elif selected_page == "⚙️ تكويد الأصناف والشركات":
-    st.title("⚙️ إعدادات الأصناف والشركات ومعدلات الاستهلاك")
-    
-    st1, st2, st3 = st.tabs(["🧪 إضافة صنف (محلول / مستهلك)", "🏢 إضافة شركة موردة", "📏 ضبط معدلات الاستهلاك الشهري"])
-    
-    with st1:
-        with st.form("add_item_form"):
-            c1, c2 = st.columns(2)
-            i_name = c1.text_input("اسم الصنف / التحليل (مثال: ALT أو Gloves أو Syringe)")
-            i_var = c2.text_input("المقاس أو النوع (مثال: قياسي، S، M، L، 5ml، EDTA)", value="قياسي")
-            i_cat = c1.selectbox("التصنيف", ["reagent", "consumable"], format_func=lambda x: "محاليل وكواشف (Reagent)" if x == "reagent" else "مستهلكات طبية (Consumable)")
-            i_unit = c2.text_input("وحدة التوريد الكبرى (مثال: علبة أو باكيت)", value="علبة")
-            i_sub = c1.text_input("وحدة القياس الصغرى (مثال: تست أو قطعة)", value="تست")
-            i_rate = c2.number_input("معدل الاستهلاك الشهري الكلي للمعمل (بالتست أو القطعة)", min_value=0.0, step=50.0)
-            
-            if st.form_submit_button("➕ حفظ الصنف", type="primary"):
-                if i_name.strip():
-                    try:
-                        supabase.table("items").insert({
-                            "name": i_name.strip(),
-                            "variant": i_var.strip() or "قياسي",
-                            "category": i_cat,
-                            "unit_name": i_unit.strip(),
-                            "sub_unit_name": i_sub.strip(),
-                            "monthly_consumption_rate": float(i_rate)
-                        }).execute()
-                        st.success(f"تم إضافة الصنف ({i_name} - {i_var}) بنجاح!")
-                    except Exception as ex:
-                        st.error("هذا الصنف بنفس المقاس مسجل بالفعل.")
-        st.dataframe(get_df("items"), use_container_width=True, hide_index=True)
-
-    with st2:
-        with st.form("add_sup_form"):
-            s_name = st.text_input("اسم الشركة الموردة (مثال: Roche, Abbott, Mindray)")
-            s_contact = st.text_input("بيانات التواصل / المندوب (اختياري)")
-            if st.form_submit_button("➕ إضافة الشركة", type="primary"):
-                if s_name.strip():
-                    supabase.table("suppliers").insert({"name": s_name.strip(), "contact_info": s_contact.strip()}).execute()
-                    st.success("تم إضافة الشركة بنجاح!")
-        st.dataframe(get_df("suppliers"), use_container_width=True, hide_index=True)
-
-    with st3:
-        st.subheader("تحديث معدل الاستهلاك الشهري للأصناف")
-        items_df = get_df("items")
-        if not items_df.empty:
-            items_df["label"] = items_df["name"] + " (" + items_df["variant"] + ")"
-            sel_u_item = st.selectbox("اختر الصنف:", items_df["label"].tolist())
-            row_it = items_df[items_df["label"] == sel_u_item].iloc[0]
-            new_r = st.number_input("معدل الاستهلاك الشهري الكلي الجديد:", value=float(row_it["monthly_consumption_rate"] or 0), step=50.0)
-            if st.button("💾 تحديث المعدل"):
-                supabase.table("items").update({"monthly_consumption_rate": float(new_r)}).eq("id", int(row_it["id"])).execute()
-                st.success("تم التحديث بنجاح!")
-
-# =========================================================================
-# 9. إدارة المستخدمين والصلاحيات
-# =========================================================================
-elif selected_page == "👥 إدارة المستخدمين والصلاحيات":
-    st.title("👥 إدارة حسابات الموظفين والصلاحيات")
-    
-    locs_df = get_df("locations")
-    with st.form("create_user_form"):
-        c1, c2 = st.columns(2)
-        f_name = c1.text_input("الاسم الكامل للموظف")
-        u_name = c2.text_input("اسم الدخول (Username بالإنجليزية)")
-        u_pass = c1.text_input("كلمة المرور (Password)", type="password")
-        u_role = c2.selectbox("الصلاحية / الدور الوظيفي", list(ROLE_LABELS.keys()), format_func=lambda x: ROLE_LABELS[x])
-        u_loc = st.selectbox("الفرع / الوحدة التابع لها", locs_df["name"].tolist())
-        
-        if st.form_submit_button("✅ إنشاء الحساب", type="primary"):
-            if f_name and u_name and u_pass:
-                loc_id = int(locs_df[locs_df["name"] == u_loc].iloc[0]["id"])
-                try:
-                    supabase.table("users").insert({
-                        "full_name": f_name.strip(),
-                        "username": u_name.strip(),
-                        "password_hash": hash_password(u_pass),
-                        "role": u_role,
-                        "location_id": loc_id
-                    }).execute()
-                    st.success(f"🎉 تم إنشاء الحساب! ابعت للموظف البيانات دي:\n- **Username:** `{u_name.strip()}`\n- **Password:** `{u_pass}`")
-                except Exception:
-                    st.error("اسم المستخدم ده موجود قبل كده، اختار اسم تاني.")
-            else:
-                st.error("برجاء ملء جميع الحقول.")
-                
-    st.subheader("قائمة المستخدمين الحاليين")
-    users_df = get_df("users", "id, full_name, username, role, is_active")
-    if not users_df.empty:
-        users_df["role"] = users_df["role"].map(ROLE_LABELS)
-        st.dataframe(users_df, use_container_width=True, hide_index=True)
+                                        "tests_available": float(s_inv["tests_available"])
