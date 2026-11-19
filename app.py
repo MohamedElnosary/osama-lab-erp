@@ -10,7 +10,7 @@ from datetime import datetime, date, timedelta
 # إعدادات الصفحة والتنسيق العام (واجهة عربية احترافية)
 # =========================================================================
 st.set_page_config(
-    page_title="نظام إدارة مخازن معامل د. أسامة عبد المتعال",
+    page_title="معمل د. أسامة عبدالمتعال",
     page_icon="🧬",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -66,21 +66,63 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 # =========================================================================
-# نظام تسجيل الدخول
+# نظام تسجيل الدخول (تصميم عصري ملون وممركز)
 # =========================================================================
 if "user" not in st.session_state:
     st.session_state.user = None
 
 if st.session_state.user is None:
-    col1, col2, col3 = st.columns([1, 2, 1])
+    st.markdown("""
+    <style>
+        .stApp {
+            background: linear-gradient(135deg, #e0f2fe 0%, #f8fafc 50%, #ede9fe 100%);
+        }
+        [data-testid="stForm"] {
+            background-color: #ffffff;
+            border: 2px solid #38bdf8;
+            border-radius: 20px;
+            padding: 35px 30px;
+            box-shadow: 0 12px 30px rgba(14, 77, 146, 0.12);
+        }
+        [data-testid="stForm"] label p {
+            text-align: center !important;
+            width: 100% !important;
+            font-size: 20px !important;
+            font-weight: 700 !important;
+            color: #0e4d92 !important;
+            margin-bottom: 6px !important;
+        }
+        [data-testid="stForm"] input {
+            text-align: center !important;
+            font-size: 19px !important;
+            font-weight: 600 !important;
+            background-color: #f0f9ff !important;
+            border: 1.5px solid #7dd3fc !important;
+            border-radius: 12px !important;
+            padding: 10px !important;
+            color: #0f172a !important;
+        }
+        [data-testid="stForm"] button {
+            background: linear-gradient(90deg, #0284c7 0%, #0e4d92 100%) !important;
+            color: #ffffff !important;
+            font-size: 20px !important;
+            font-weight: 700 !important;
+            border-radius: 12px !important;
+            padding: 10px 0 !important;
+            border: none !important;
+            margin-top: 10px !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1.3, 1.4, 1.3])
     with col2:
-        st.markdown("<h1 style='text-align: center; color: #0e4d92;'>🧬 معامل د. أسامة عبد المتعال</h1>", unsafe_allow_html=True)
-        st.markdown("<h4 style='text-align: center; color: #475569;'>نظام إدارة المخازن والكواشف الذكي (ERP / LIMS)</h4>", unsafe_allow_html=True)
-        st.divider()
+        st.markdown("<h1 style='text-align: center; color: #0e4d92; font-size: 36px; margin-bottom: 20px;'>🧬 معمل د. أسامة عبدالمتعال</h1>", unsafe_allow_html=True)
         with st.form("login_form"):
-            username = st.text_input("اسم المستخدم (Username)")
-            password = st.text_input("كلمة المرور (Password)", type="password")
-            submit = st.form_submit_button("تسجيل الدخول", use_container_width=True, type="primary")
+            username = st.text_input("اسم المستخدم")
+            password = st.text_input("كلمة المرور", type="password")
+            submit = st.form_submit_button("تسجيل الدخول", use_container_width=True)
             if submit:
                 res = supabase.table("users").select("*, locations(name, location_type)").eq("username", username.strip()).eq("is_active", True).execute()
                 if res.data and res.data[0]["password_hash"] == hash_password(password):
@@ -106,7 +148,7 @@ ROLE_LABELS = {
 }
 
 with st.sidebar:
-    st.markdown("### 🧬 معامل د. أسامة عبد المتعال")
+    st.markdown("### 🧬 معمل د. أسامة عبدالمتعال")
     st.info(f"**المستخدم:** {user['full_name']}\n\n**الصلاحية:** {ROLE_LABELS.get(role, role)}\n\n**الموقع:** {user_loc_name}")
     
     menu_options = []
