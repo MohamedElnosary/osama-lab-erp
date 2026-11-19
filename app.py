@@ -7,10 +7,10 @@ import hashlib
 from datetime import datetime, date, timedelta
 
 # =========================================================================
-# إعدادات الصفحة والتنسيق العام (اتجاه عربي كامل من اليمين لليسار)
+# إعدادات الصفحة والتنسيق العام (هوية بصرية موحدة مريحة للعين وعالية الوضوح)
 # =========================================================================
 st.set_page_config(
-    page_title="معامل د. أسامة عبدالمتعال",
+    page_title="معامل أ.د/ أسامة عبدالمتعال",
     page_icon="🧬",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -20,38 +20,109 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
     
-    /* إجبار الاتجاه من اليمين لليسار في كامل التطبيق */
-    html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], .main .block-container {
+    /* خلفية متناسقة مريحة للعين على شاشة الكمبيوتر + اتجاه عربي من اليمين لليسار */
+    html, body, .stApp, [data-testid="stMain"], .main .block-container {
         font-family: 'Cairo', sans-serif !important;
         direction: rtl !important;
         text-align: right !important;
+        background: linear-gradient(160deg, #f1f5f9 0%, #e0f2fe 50%, #f8fafc 100%) !important;
+        color: #0f172a !important;
     }
 
-    /* محاذاة كافة النصوص والمدخلات والجداول لليمين */
+    /* محاذاة النصوص والمدخلات والجداول لليمين بوضوح عالٍ */
     p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     [data-testid="stWidgetLabel"], [data-testid="stAlert"], .stSelectbox, .stTextInput, .stNumberInput, .stDateInput {
         direction: rtl !important;
         text-align: right !important;
     }
 
-    /* وضع القائمة الجانبية في أقصى اليمين */
-    [data-testid="stAppViewContainer"] {
-        flex-direction: row-reverse !important;
+    [data-testid="stWidgetLabel"] p {
+        color: #0f172a !important;
+        font-weight: 700 !important;
+        font-size: 16px !important;
     }
 
+    /* ترويسة موحدة لكل الشاشات بنفس مسمى القائمة الجانبية */
+    .page-header-banner {
+        background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+        border: 1.5px solid #bae6fd;
+        border-right: 7px solid #0e4d92;
+        border-left: 7px solid #0284c7;
+        border-radius: 18px;
+        padding: 16px 24px;
+        margin-bottom: 22px;
+        box-shadow: 0 6px 20px rgba(14, 77, 146, 0.08);
+        text-align: center !important;
+    }
+    .page-header-banner h1 {
+        text-align: center !important;
+        color: #0e4d92 !important;
+        font-size: 32px !important;
+        font-weight: 800 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* تنسيق التبويبات في كل الشاشات */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
+        gap: 10px;
         direction: rtl !important;
+        background-color: #ffffff;
+        padding: 8px;
+        border-radius: 14px;
+        border: 1.5px solid #cbd5e1;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
     }
     .stTabs [data-baseweb="tab"] {
-        background-color: #f0f2f6;
-        border-radius: 8px;
-        padding: 8px 18px;
+        background-color: #f1f5f9;
+        color: #1e293b;
+        border-radius: 10px;
+        padding: 10px 20px;
         font-weight: 700;
+        font-size: 16px;
+        border: 1px solid transparent;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #0e4d92;
-        color: white;
+        background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%) !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 10px rgba(14, 77, 146, 0.2);
+    }
+
+    /* تنسيق النماذج والكروت البيضاء الواضحة */
+    [data-testid="stForm"], [data-testid="stExpander"], div[data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: #ffffff !important;
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 16px !important;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05) !important;
+    }
+
+    /* تنسيق حقول الإدخال */
+    [data-baseweb="input"], [data-baseweb="select"] > div {
+        background-color: #f8fafc !important;
+        border: 1.5px solid #94a3b8 !important;
+        border-radius: 10px !important;
+        color: #0f172a !important;
+    }
+    [data-baseweb="input"]:focus-within, [data-baseweb="select"] > div:focus-within {
+        border-color: #0284c7 !important;
+        background-color: #ffffff !important;
+        box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
+    }
+
+    /* تنسيق الأزرار الرئيسية في كل الشاشات */
+    .stButton > button[kind="primary"], [data-testid="stFormSubmitButton"] > button[kind="primary"] {
+        background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        font-size: 17px !important;
+        padding: 10px 20px !important;
+        box-shadow: 0 4px 12px rgba(14, 77, 146, 0.22) !important;
+    }
+    .stButton > button[kind="primary"]:hover, [data-testid="stFormSubmitButton"] > button[kind="primary"]:hover {
+        background: linear-gradient(90deg, #0b3d75 0%, #0369a1 100%) !important;
+        transform: translateY(-1px);
     }
 
     /* كروت الإحصائيات التفاعلية في الرئيسية */
@@ -61,7 +132,7 @@ st.markdown("""
         padding: 20px 16px;
         text-align: center !important;
         box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
-        border: 1px solid #e2e8f0;
+        border: 1.5px solid #cbd5e1;
         transition: transform 0.25s ease, box-shadow 0.25s ease;
         margin-bottom: 10px;
     }
@@ -72,7 +143,7 @@ st.markdown("""
     .kpi-title {
         font-size: 16px;
         font-weight: 700;
-        color: #475569;
+        color: #334155;
         margin-bottom: 8px;
         text-align: center !important;
     }
@@ -86,14 +157,18 @@ st.markdown("""
         color: #0e4d92 !important;
         font-weight: 800 !important;
         margin: 12px 0 16px 0 !important;
+        background: #ffffff;
+        padding: 10px;
+        border-radius: 12px;
+        border: 1px solid #bae6fd;
     }
 
     /* =====================================================================
        تنسيق القائمة الجانبية الاحترافي (كروت تنقل عريضة وخط كبير)
        ===================================================================== */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%) !important;
-        border-left: 2px solid #cbd5e1 !important;
+        background: linear-gradient(180deg, #ffffff 0%, #e0f2fe 100%) !important;
+        border-left: 2px solid #93c5fd !important;
         direction: rtl !important;
         text-align: right !important;
     }
@@ -121,7 +196,7 @@ st.markdown("""
     [data-testid="stSidebar"] div[role="radiogroup"] label p {
         font-size: 17px !important;
         font-weight: 700 !important;
-        color: #1e293b !important;
+        color: #0f172a !important;
         line-height: 1.4 !important;
         text-align: right !important;
     }
@@ -152,6 +227,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+def render_page_header(title_text: str):
+    st.markdown(f"""
+    <div class="page-header-banner">
+        <h1>{title_text}</h1>
+    </div>
+    """, unsafe_allow_html=True)
+
 # =========================================================================
 # الاتصال بقاعدة البيانات السحابية Supabase
 # =========================================================================
@@ -171,7 +253,7 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 # =========================================================================
-# نظام تسجيل الدخول (تصميم عصري جذاب ومضغوط في المنتصف)
+# نظام تسجيل الدخول (العنوان فوق الصندوق في المنتصف تماماً)
 # =========================================================================
 if "user" not in st.session_state:
     st.session_state.user = None
@@ -180,12 +262,31 @@ if st.session_state.user is None:
     st.markdown("""
     <style>
         .stApp {
-            background: radial-gradient(circle at top right, #bae6fd 0%, #f0f9ff 45%, #e0e7ff 100%);
+            background: radial-gradient(circle at top right, #bae6fd 0%, #f0f9ff 45%, #e0e7ff 100%) !important;
+        }
+        .login-header-box {
+            max-width: 410px !important;
+            margin: 20px auto 16px auto !important;
+            text-align: center !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+        }
+        .login-header-title {
+            text-align: center !important;
+            width: 100% !important;
+            background: linear-gradient(90deg, #0e4d92, #0284c7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 32px !important;
+            font-weight: 800 !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         [data-testid="stForm"] {
             max-width: 410px !important;
             margin: 0 auto !important;
-            background: rgba(255, 255, 255, 0.96) !important;
+            background: rgba(255, 255, 255, 0.98) !important;
             border: 1.5px solid #bae6fd !important;
             border-top: 6px solid #0e4d92 !important;
             border-radius: 24px !important;
@@ -248,17 +349,10 @@ if st.session_state.user is None:
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("""
-        <h1 style='text-align: center !important;
-                   background: linear-gradient(90deg, #0e4d92, #0284c7);
-                   -webkit-background-clip: text;
-                   -webkit-text-fill-color: transparent;
-                   font-size: 38px;
-                   font-weight: 800;
-                   margin-bottom: 18px;'>
-            🧬 معامل د. أسامة عبدالمتعال
-        </h1>
+        <div class="login-header-box">
+            <div class="login-header-title">🧬 معامل أ.د/ أسامة عبدالمتعال</div>
+        </div>
     """, unsafe_allow_html=True)
 
     with st.form("login_form"):
@@ -290,7 +384,7 @@ ROLE_LABELS = {
 }
 
 with st.sidebar:
-    st.markdown("<h2 style='text-align: center !important; color: #0e4d92; font-weight: 800; margin-bottom: 12px;'>🧬 معامل د. أسامة عبدالمتعال</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center !important; color: #0e4d92; font-weight: 800; margin-bottom: 12px;'>🧬 معامل أ.د/ أسامة عبدالمتعال</h2>", unsafe_allow_html=True)
     st.markdown(f"""
     <div style='background: linear-gradient(135deg, #0e4d92 0%, #0284c7 100%);
                 color: white;
@@ -335,10 +429,10 @@ def get_df(table_name, select_query="*"):
     return pd.DataFrame(res.data) if res.data else pd.DataFrame()
 
 # =========================================================================
-# 1. الرئيسية (شاشة تفاعلية جذابة بعناوين في المنتصف)
+# 1. الرئيسية
 # =========================================================================
 if selected_page == "📊 الرئيسية":
-    st.markdown("<h1 style='text-align: center !important; color: #0e4d92; font-weight: 800; margin-bottom: 20px;'>📊 الرئيسية</h1>", unsafe_allow_html=True)
+    render_page_header("📊 الرئيسية")
     
     inv_res = supabase.table("inventory").select("*, batches(*, items(name, variant, category, monthly_consumption_rate), suppliers(name)), locations(name, location_type)").execute()
     cons_res = supabase.table("consumption_logs").select("*, items(name, variant), suppliers(name), locations(name)").execute()
@@ -346,7 +440,6 @@ if selected_page == "📊 الرئيسية":
     inv_data = inv_res.data or []
     cons_data = cons_res.data or []
     
-    # فلتر تفاعلي للمخزن أو الفترة في الرئيسية
     f_col1, f_col2 = st.columns(2)
     with f_col1:
         all_locs = ["جميع المخازن والوحدات"] + sorted(list({r["locations"]["name"] for r in inv_data if r.get("locations")}))
@@ -427,7 +520,7 @@ if selected_page == "📊 الرئيسية":
             } for c in recent_cons])
             top_cost = df_c.groupby("الصنف")["التكلفة"].sum().reset_index().sort_values("التكلفة", ascending=False).head(10)
             fig1 = px.bar(top_cost, x="الصنف", y="التكلفة", color="التكلفة", color_continuous_scale="Blues", text_auto='.0f')
-            fig1.update_layout(font_family="Cairo", title_x=0.5)
+            fig1.update_layout(font_family="Cairo", title_x=0.5, paper_bgcolor="white", plot_bgcolor="#f8fafc")
             st.plotly_chart(fig1, use_container_width=True)
         else:
             st.info("لا توجد حركات سحب مسجلة خلال هذه الفترة لعرض الرسم البياني.")
@@ -441,8 +534,8 @@ if selected_page == "📊 الرئيسية":
             } for r in filtered_inv if r["tests_available"] > 0 and r.get("batches")])
             if not df_s.empty:
                 sup_val = df_s.groupby("الشركة")["القيمة"].sum().reset_index()
-                fig2 = px.pie(sup_val, names="الشركة", values="القيمة", hole=0.45, color_discrete_sequence=px.colors.qualitative.Set2)
-                fig2.update_layout(font_family="Cairo", title_x=0.5)
+                fig2 = px.pie(sup_val, names="الشركة", values="القيمة", hole=0.45, color_discrete_sequence=["#0e4d92", "#0284c7", "#0d9488", "#38bdf8", "#6366f1"])
+                fig2.update_layout(font_family="Cairo", title_x=0.5, paper_bgcolor="white")
                 st.plotly_chart(fig2, use_container_width=True)
             else:
                 st.info("المخزون الحالي فارغ.")
@@ -493,7 +586,7 @@ if selected_page == "📊 الرئيسية":
 # 2. المخزن الرئيسي
 # =========================================================================
 elif selected_page == "🏢 المخزن الرئيسي":
-    st.title("🏢 أرصدة المخزن الرئيسي")
+    render_page_header("🏢 المخزن الرئيسي")
     
     inv_res = supabase.table("inventory").select("*, batches(*, items(id, name, variant, category, unit_name, sub_unit_name, monthly_consumption_rate), suppliers(name))").eq("location_id", 1).gt("tests_available", 0).execute()
     rows = inv_res.data or []
@@ -504,7 +597,7 @@ elif selected_page == "🏢 المخزن الرئيسي":
         tab1, tab2 = st.tabs(["📊 العرض التجميعي الذكي (كل الشركات معاً + مدة الكفاية)", "🏢 العرض التفصيلي (مفصول حسب الشركة ورقم التشغيلة)"])
         
         with tab1:
-            st.subheader("إجمالي الرصيد الكلي لكل تحليل/صنف ومدة كفايته")
+            st.markdown("<h3 class='section-center-title'>إجمالي الرصيد الكلي لكل تحليل/صنف ومدة كفايته</h3>", unsafe_allow_html=True)
             agg = {}
             for r in rows:
                 it = r["batches"]["items"]
@@ -535,7 +628,7 @@ elif selected_page == "🏢 المخزن الرئيسي":
             st.dataframe(pd.DataFrame(agg_list), use_container_width=True, hide_index=True)
 
         with tab2:
-            st.subheader("تفاصيل الأرصدة حسب الشركة الموردة ورقم التشغيلة")
+            st.markdown("<h3 class='section-center-title'>تفاصيل الأرصدة حسب الشركة الموردة ورقم التشغيلة</h3>", unsafe_allow_html=True)
             det_list = []
             for r in rows:
                 b = r["batches"]
@@ -558,10 +651,10 @@ elif selected_page == "🏢 المخزن الرئيسي":
             st.dataframe(df_det, use_container_width=True, hide_index=True)
 
 # =========================================================================
-# 3. الطلبيات (طلبيات الشراء من الشركات للمخزن الرئيسي)
+# 3. الطلبيات
 # =========================================================================
 elif selected_page == "🛒 الطلبيات":
-    st.title("🛒 حساب طلبيات الشراء الذكية من الشركات الموردة")
+    render_page_header("🛒 الطلبيات")
     
     months_cover = st.slider("حدد عدد الشهور المطلوب تغطيتها في طلبية الشراء:", min_value=1, max_value=12, value=3)
     
@@ -600,10 +693,10 @@ elif selected_page == "🛒 الطلبيات":
         st.success("✅ الأرصدة الحالية في المخزن الرئيسي تغطي الفترة المحددة بالكامل بناءً على معدلات الاستهلاك المسجلة!")
 
 # =========================================================================
-# 4. المخازن الفرعية والسحب اليومي على الأجهزة
+# 4. المخازن الفرعية
 # =========================================================================
 elif selected_page == "🧪 المخازن الفرعية":
-    st.title("🧪 أرصدة المخازن الفرعية والوحدات وتسجيل السحب للأجهزة")
+    render_page_header("🧪 المخازن الفرعية")
     
     locs_df = get_df("locations")
     sub_locs = locs_df[locs_df["location_type"] != "main"]
@@ -658,10 +751,10 @@ elif selected_page == "🧪 المخازن الفرعية":
                         st.rerun()
 
 # =========================================================================
-# 5. إضافة فاتورة (توريد رصيد جديد للمخزن الرئيسي)
+# 5. إضافة فاتورة
 # =========================================================================
 elif selected_page == "📥 إضافة فاتورة":
-    st.title("📥 إضافة فاتورة توريد إلى المخزن الرئيسي")
+    render_page_header("📥 إضافة فاتورة")
     
     items_df = get_df("items")
     suppliers_df = get_df("suppliers")
@@ -721,10 +814,10 @@ elif selected_page == "📥 إضافة فاتورة":
                     st.success(f"🎉 تم إضافة {kits_qty} {selected_item['unit_name']} ({total_tests} {sub_u}) بنجاح إلى المخزن الرئيسي!")
 
 # =========================================================================
-# 6. أذونات الصرف (إنشاء طلب صرف + تنفيذ الصرف لأمين المخزن)
+# 6. أذونات الصرف
 # =========================================================================
 elif selected_page == "🔄 أذونات الصرف":
-    st.title("🔄 أذونات الصرف من المخزن الرئيسي")
+    render_page_header("🔄 أذونات الصرف")
     
     t1, t2 = st.tabs(["📝 إنشاء إذن صرف جديد (للوحدات والفروع)", "📦 أذونات الصرف المعتمدة (تنفيذ الصرف)"])
     
@@ -836,10 +929,10 @@ elif selected_page == "🔄 أذونات الصرف":
                                 st.rerun()
 
 # =========================================================================
-# 7. الموافقات (قائمة مستقلة لاعتماد أذونات الصرف)
+# 7. الموافقات
 # =========================================================================
 elif selected_page == "✍️ الموافقات":
-    st.title("✍️ الموافقات — اعتماد أذونات الصرف")
+    render_page_header("✍️ الموافقات")
     
     pending = supabase.table("transfer_requests").select("*, locations!transfer_requests_to_location_id_fkey(name), items(name, variant, unit_name), suppliers(name), batches(lot_number, expiry_date)").eq("status", "pending_gm").execute()
     if not pending.data:
@@ -865,10 +958,10 @@ elif selected_page == "✍️ الموافقات":
                         st.rerun()
 
 # =========================================================================
-# 8. التقارير (التقارير المالية ومقارنة الأسعار بين الشركات)
+# 8. التقارير
 # =========================================================================
 elif selected_page == "📈 التقارير":
-    st.title("📈 التقارير المالية وتحليل أسعار الشركات")
+    render_page_header("📈 التقارير")
     
     rep_t1, rep_t2 = st.tabs(["📊 تقرير الاستهلاك الكمي والمالي (حسب الفترة والشركة)", "💲 مقارنة وتطور أسعار الشركات الموردة"])
     
@@ -889,7 +982,7 @@ elif selected_page == "📈 التقارير":
                 "التكلفة الإجمالية (ج.م)": float(l["cost_incurred"])
             } for l in logs.data])
             
-            st.subheader("ملخص الاستهلاك مقسماً بالصنف والشركة الموردة")
+            st.markdown("<h3 class='section-center-title'>ملخص الاستهلاك مقسماً بالصنف والشركة الموردة</h3>", unsafe_allow_html=True)
             summary = df_l.groupby(["الصنف", "الشركة الموردة"]).agg(
                 إجمالي_الكمية=("الكمية المستهلكة", "sum"),
                 إجمالي_التكلفة_جنيه=("التكلفة الإجمالية (ج.م)", "sum")
@@ -903,7 +996,7 @@ elif selected_page == "📈 التقارير":
             st.info("لا توجد حركات استهلاك مسجلة في هذه الفترة.")
 
     with rep_t2:
-        st.subheader("تتبع ومقارنة أسعار التوريد عبر الزمن بين الشركات")
+        st.markdown("<h3 class='section-center-title'>تتبع ومقارنة أسعار التوريد عبر الزمن بين الشركات</h3>", unsafe_allow_html=True)
         batches_res = supabase.table("batches").select("*, items(name, variant), suppliers(name)").order("received_date").execute()
         if batches_res.data:
             df_b = pd.DataFrame([{
@@ -919,17 +1012,17 @@ elif selected_page == "📈 التقارير":
             sub_b = df_b[df_b["الصنف"] == sel_p_item]
             
             fig_p = px.line(sub_b, x="تاريخ التوريد", y="سعر الاختبار/القطعة (ج.م)", color="الشركة الموردة", markers=True, title=f"تطور ومقارنة سعر ({sel_p_item}) بين الشركات")
-            fig_p.update_layout(font_family="Cairo", title_x=0.5)
+            fig_p.update_layout(font_family="Cairo", title_x=0.5, paper_bgcolor="white", plot_bgcolor="#f8fafc")
             st.plotly_chart(fig_p, use_container_width=True)
             st.dataframe(sub_b, use_container_width=True, hide_index=True)
         else:
             st.info("لم يتم تسجيل فواتير توريد بعد.")
 
 # =========================================================================
-# 9. التكويد (تكويد وتعديل وحذف الأصناف والشركات والفروع ومعدلات الاستهلاك)
+# 9. التكويد
 # =========================================================================
 elif selected_page == "⚙️ التكويد":
-    st.title("⚙️ التكويد — إدارة الأصناف والشركات والمخازن الفرعية")
+    render_page_header("⚙️ التكويد")
     
     st1, st2, st3, st4 = st.tabs([
         "🧪 الأصناف (إضافة / تعديل / حذف)", 
@@ -1193,7 +1286,7 @@ elif selected_page == "⚙️ التكويد":
 # 10. إدارة المستخدمين والصلاحيات
 # =========================================================================
 elif selected_page == "👥 إدارة المستخدمين والصلاحيات":
-    st.title("👥 إدارة حسابات الموظفين والصلاحيات")
+    render_page_header("👥 إدارة المستخدمين والصلاحيات")
     
     locs_df = get_df("locations")
     with st.form("create_user_form"):
