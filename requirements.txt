@@ -1,4 +1,7 @@
 streamlit
-supabase
 pandas
 plotly
+supabase
+fpdf2
+arabic-reshaper
+python-bidi
