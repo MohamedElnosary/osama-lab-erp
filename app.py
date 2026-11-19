@@ -155,43 +155,6 @@ st.markdown("""
         border: 1px solid #bae6fd;
     }
 
-    /* جدول الموافقات الاحترافي بخط كبير وواضح */
-    .approvals-table {
-        width: 100%;
-        border-collapse: collapse;
-        background-color: #ffffff;
-        border-radius: 14px;
-        overflow: hidden;
-        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
-        margin-bottom: 16px;
-        direction: rtl;
-        text-align: center;
-    }
-    .approvals-table th {
-        background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%);
-        color: #ffffff;
-        font-size: 17px;
-        font-weight: 800;
-        padding: 14px 10px;
-        text-align: center !important;
-        border: 1px solid #0e4d92;
-    }
-    .approvals-table td {
-        font-size: 16px;
-        font-weight: 700;
-        color: #0f172a;
-        padding: 14px 10px;
-        text-align: center !important;
-        border: 1px solid #cbd5e1;
-        vertical-align: middle;
-    }
-    .approvals-table tr:nth-child(even) {
-        background-color: #f8fafc;
-    }
-    .approvals-table tr:hover {
-        background-color: #eff6ff;
-    }
-
     /* =====================================================================
        تنسيق القائمة الجانبية الاحترافي (كروت تنقل عريضة وخط كبير)
        ===================================================================== */
@@ -1108,7 +1071,7 @@ elif selected_page == "🔄 أذونات الصرف":
                                 st.rerun()
 
 # =========================================================================
-# 8. الموافقات (عرض جدولي كبير وواضح للعين المجردة + اعتماد فردي وجماعي)
+# 8. الموافقات (جدول واضح ومقروء بالكامل + اعتماد فردي وجماعي)
 # =========================================================================
 elif selected_page == "✍️ الموافقات":
     render_page_header("✍️ الموافقات")
@@ -1171,8 +1134,8 @@ elif selected_page == "✍️ الموافقات":
 
             st.markdown("<br>", unsafe_allow_html=True)
 
-            # بناء صفوف الجدول الكامل الواضح
-            table_rows_html = ""
+            # تجهيز الجدول النظيف والواضح
+            table_data = []
             enriched_requests = []
 
             for req in filtered_pending:
@@ -1191,6 +1154,17 @@ elif selected_page == "✍️ الموافقات":
 
                 qty_txt = f"{req['kits_requested']} {req['items']['unit_name']} ({int(req_tests)} {sub_u})"
                 
+                table_data.append({
+                    "الجهة الطالبة": req['locations']['name'],
+                    "الصنف": req['items']['name'],
+                    "الشركة": req['suppliers']['name'],
+                    "الكمية المطلوبة": qty_txt,
+                    "تكفي لمدة": req_coverage_txt,
+                    "الرصيد الحالي بالوحدة": cur_stock_txt,
+                    "رقم التشغيلة": req['batches']['lot_number'],
+                    "الصلاحية": req['batches']['expiry_date']
+                })
+
                 enriched_requests.append({
                     "req": req,
                     "qty_txt": qty_txt,
@@ -1198,40 +1172,10 @@ elif selected_page == "✍️ الموافقات":
                     "cur_stock_txt": cur_stock_txt
                 })
 
-                table_rows_html += f"""
-                <tr>
-                    <td style="color:#0e4d92; font-weight:800;">{req['locations']['name']}</td>
-                    <td style="font-weight:800;">{req['items']['name']}</td>
-                    <td>{req['suppliers']['name']}</td>
-                    <td style="color:#0284c7; font-weight:800;">{qty_txt}</td>
-                    <td style="color:#0d9488; font-weight:800;">{req_coverage_txt}</td>
-                    <td>{cur_stock_txt}</td>
-                    <td dir="ltr">{req['batches']['lot_number']}</td>
-                    <td dir="ltr">{req['batches']['expiry_date']}</td>
-                </tr>
-                """
+            # عرض الجدول الرئيسي بشكل واضح وكبير للعين المجردة
+            st.dataframe(pd.DataFrame(table_data), use_container_width=True, hide_index=True)
 
-            st.markdown(f"""
-            <table class="approvals-table">
-                <thead>
-                    <tr>
-                        <th>الجهة الطالبة</th>
-                        <th>الصنف</th>
-                        <th>الشركة</th>
-                        <th>الكمية المطلوبة</th>
-                        <th>تكفي لمدة</th>
-                        <th>الرصيد الحالي بالوحدة</th>
-                        <th>رقم التشغيلة</th>
-                        <th>الصلاحية</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {table_rows_html}
-                </tbody>
-            </table>
-            """, unsafe_allow_html=True)
-
-            st.markdown("<h3 class='section-center-title'>⚡ اعتماد أو رفض الطلبات</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 class='section-center-title'>⚡ اعتماد أو رفض كل طلب</h3>", unsafe_allow_html=True)
             for item_info in enriched_requests:
                 req = item_info["req"]
                 with st.container(border=True):
