@@ -18,7 +18,7 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
     html, body, [class*="css"] {
         font-family: 'Cairo', sans-serif;
         direction: rtl;
@@ -43,6 +43,67 @@ st.markdown("""
         padding: 15px;
         border-radius: 10px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    /* =====================================================================
+       تنسيق القائمة الجانبية الاحترافي (كروت تنقل عريضة وخط كبير)
+       ===================================================================== */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%) !important;
+        border-left: 2px solid #cbd5e1 !important;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] {
+        gap: 10px !important;
+        width: 100% !important;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] label {
+        background-color: #ffffff !important;
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 12px !important;
+        padding: 12px 16px !important;
+        margin: 0 !important;
+        width: 100% !important;
+        transition: all 0.2s ease-in-out !important;
+        box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04) !important;
+        cursor: pointer !important;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+        border-color: #0284c7 !important;
+        background-color: #f0f9ff !important;
+        transform: translateX(-3px);
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] label p {
+        font-size: 17px !important;
+        font-weight: 700 !important;
+        color: #1e293b !important;
+        line-height: 1.4 !important;
+    }
+    /* تمييز الصفحة المختارة حالياً باللون الأزرق الملكي */
+    [data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
+        background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%) !important;
+        border-color: #0e4d92 !important;
+        box-shadow: 0 4px 12px rgba(14, 77, 146, 0.25) !important;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) p {
+        color: #ffffff !important;
+    }
+    /* إخفاء دائرة الراديو التقليدية الصغيرة */
+    [data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {
+        display: none !important;
+    }
+    /* زر تسجيل الخروج في القائمة الجانبية */
+    [data-testid="stSidebar"] button {
+        background-color: #fee2e2 !important;
+        color: #b91c1c !important;
+        border: 1.5px solid #fca5a5 !important;
+        border-radius: 12px !important;
+        font-size: 17px !important;
+        font-weight: 700 !important;
+        padding: 10px !important;
+    }
+    [data-testid="stSidebar"] button:hover {
+        background-color: #dc2626 !important;
+        color: #ffffff !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -148,8 +209,20 @@ ROLE_LABELS = {
 }
 
 with st.sidebar:
-    st.markdown("### 🧬 معمل د. أسامة عبدالمتعال")
-    st.info(f"**المستخدم:** {user['full_name']}\n\n**الصلاحية:** {ROLE_LABELS.get(role, role)}\n\n**الموقع:** {user_loc_name}")
+    st.markdown("<h2 style='text-align: center; color: #0e4d92; font-weight: 800; margin-bottom: 12px;'>🧬 معمل د. أسامة عبدالمتعال</h2>", unsafe_allow_html=True)
+    st.markdown(f"""
+    <div style='background: linear-gradient(135deg, #0e4d92 0%, #0284c7 100%);
+                color: white;
+                padding: 14px 16px;
+                border-radius: 14px;
+                text-align: center;
+                font-size: 20px;
+                font-weight: 700;
+                box-shadow: 0 4px 10px rgba(14, 77, 146, 0.2);
+                margin-bottom: 18px;'>
+        👤 {user['full_name']}
+    </div>
+    """, unsafe_allow_html=True)
     
     menu_options = []
     if role in ["chairman", "general_manager"]:
@@ -166,7 +239,7 @@ with st.sidebar:
     if role in ["chairman", "general_manager"]:
         menu_options.append("👥 إدارة المستخدمين والصلاحيات")
 
-    selected_page = st.radio("القائمة الرئيسية", menu_options)
+    selected_page = st.radio("القائمة الرئيسية", menu_options, label_visibility="collapsed")
     st.divider()
     if st.button("🚪 تسجيل الخروج", use_container_width=True):
         st.session_state.user = None
@@ -735,7 +808,6 @@ elif selected_page == "⚙️ تكويد الأصناف والشركات وال�
         "📏 معدلات الاستهلاك الشهري"
     ])
     
-    # --- التبويب الأول: الأصناف ---
     with st1:
         with st.expander("➕ إضافة صنف جديد (محلول / مستهلك)", expanded=True):
             with st.form("add_item_form"):
@@ -818,7 +890,6 @@ elif selected_page == "⚙️ تكويد الأصناف والشركات وال�
             disp_items["التصنيف"] = disp_items["التصنيف"].map({"reagent": "محاليل وكواشف", "consumable": "مستهلكات"})
             st.dataframe(disp_items, use_container_width=True, hide_index=True)
 
-    # --- التبويب الثاني: الشركات الموردة ---
     with st2:
         with st.expander("➕ إضافة شركة موردة جديدة", expanded=True):
             with st.form("add_sup_form"):
@@ -875,7 +946,6 @@ elif selected_page == "⚙️ تكويد الأصناف والشركات وال�
             disp_sups.columns = ["الكود", "اسم الشركة", "بيانات التواصل"]
             st.dataframe(disp_sups, use_container_width=True, hide_index=True)
 
-    # --- التبويب الثالث: إضافة وتعديل وحذف المخازن الفرعية والوحدات ---
     with st3:
         st.subheader("🏥 إدارة المخازن الفرعية ووحدات المعمل")
         LOC_TYPE_LABELS = {
@@ -947,7 +1017,6 @@ elif selected_page == "⚙️ تكويد الأصناف والشركات وال�
         disp_locs.columns = ["الكود", "اسم المخزن / الوحدة", "النوع"]
         st.dataframe(disp_locs, use_container_width=True, hide_index=True)
 
-    # --- التبويب الرابع: ضبط معدلات الاستهلاك الشهري (الكلي ولكل وحدة) ---
     with st4:
         st.subheader("📏 ضبط معدلات الاستهلاك الشهري")
         items_df = get_df("items")
