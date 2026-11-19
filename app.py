@@ -31,7 +31,7 @@ st.markdown("""
 
     /* محاذاة النصوص والمدخلات والجداول لليمين بوضوح عالٍ */
     p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
-    [data-testid="stWidgetLabel"], [data-testid="stAlert"], .stSelectbox, .stTextInput, .stNumberInput, .stDateInput {
+    [data-testid="stWidgetLabel"], [data-testid="stAlert"], .stSelectbox, .stMultiSelect, .stTextInput, .stNumberInput, .stDateInput {
         direction: rtl !important;
         text-align: right !important;
     }
@@ -467,7 +467,7 @@ if selected_page == "📊 الرئيسية":
             days_left = (exp_d - today).days
             if days_left <= 60:
                 expiring_soon.append({
-                    "الصنف": f"{r['batches']['items']['name']} ({r['batches']['items']['variant']})",
+                    "الصنف": r['batches']['items']['name'],
                     "الشركة": r["batches"]["suppliers"]["name"],
                     "المخزن": r["locations"]["name"],
                     "رقم التشغيلة": r["batches"]["lot_number"],
@@ -514,7 +514,7 @@ if selected_page == "📊 الرئيسية":
         st.markdown("<h3 class='section-center-title'>🔥 أكثر الأصناف سحباً (حسب التكلفة المالية)</h3>", unsafe_allow_html=True)
         if recent_cons:
             df_c = pd.DataFrame([{
-                "الصنف": f"{c['items']['name']} ({c['items']['variant']})",
+                "الصنف": c['items']['name'],
                 "التكلفة": c["cost_incurred"],
                 "الكمية": c["tests_consumed"]
             } for c in recent_cons])
@@ -558,7 +558,7 @@ if selected_page == "📊 الرئيسية":
             summary_map = {}
             for r in main_inv:
                 it = r["batches"]["items"]
-                key = f"{it['name']} ({it['variant']})"
+                key = it['name']
                 if key not in summary_map:
                     summary_map[key] = {"total": 0, "rate": float(it["monthly_consumption_rate"] or 0)}
                 summary_map[key]["total"] += float(r["tests_available"])
@@ -571,14 +571,14 @@ if selected_page == "📊 الرئيسية":
                     ai_alerts.append({
                         "الصنف": k,
                         "الرصيد الكلي": v["total"],
-                        "الاستهلاك الشهري": v["rate"],
+                        "الاستهلاك الشهري الكلي": v["rate"],
                         "يكفي لمدة (شهر)": round(months_left, 1),
                         "الحالة": status
                     })
             if ai_alerts:
                 st.dataframe(pd.DataFrame(ai_alerts).sort_values("يكفي لمدة (شهر)"), use_container_width=True, hide_index=True)
             else:
-                st.info("قم بإدخال معدلات الاستهلاك الشهري للأصناف لتفعيل التنبؤ التلقائي.")
+                st.info("قم بإدخال معدلات الاستهلاك الشهري للأصناف في التكويد لتفعيل التنبؤ التلقائي.")
         else:
             st.info("لا توجد أرصدة في المخزن الرئيسي حالياً.")
 
@@ -602,7 +602,7 @@ elif selected_page == "🏢 المخزن الرئيسي":
             for r in rows:
                 it = r["batches"]["items"]
                 sub_u = "اختبار" if it["sub_unit_name"] == "تست" else it["sub_unit_name"]
-                key = (it["id"], it["name"], it["variant"], it["category"], sub_u, float(it["monthly_consumption_rate"] or 0))
+                key = (it["id"], it["name"], it["category"], sub_u, float(it["monthly_consumption_rate"] or 0))
                 if key not in agg:
                     agg[key] = {"kits": 0.0, "tests": 0.0, "value": 0.0, "companies": set()}
                 agg[key]["kits"] += float(r["kits_available"])
@@ -612,16 +612,15 @@ elif selected_page == "🏢 المخزن الرئيسي":
             
             agg_list = []
             for k, v in agg.items():
-                rate = k[5]
+                rate = k[4]
                 months_cov = round(v["tests"] / rate, 2) if rate > 0 else 0
                 agg_list.append({
                     "الصنف": k[1],
-                    "النوع/المقاس": k[2],
-                    "التصنيف": "محاليل وكواشف" if k[3] == "reagent" else "مستهلكات",
+                    "التصنيف": "محاليل وكواشف" if k[2] == "reagent" else "مستهلكات",
                     "الشركات المتوفرة": " + ".join(v["companies"]),
                     "إجمالي العلب/الباكيت": v["kits"],
-                    f"إجمالي الرصيد ({k[4]})": v["tests"],
-                    "الاستهلاك الشهري": rate,
+                    f"إجمالي الرصيد ({k[3]})": v["tests"],
+                    "الاستهلاك الشهري الكلي": rate,
                     "يكفي لمدة (شهور)": f"{months_cov} شهر" if rate > 0 else "غير محدد",
                     "القيمة المالية (ج.م)": round(v["value"], 2)
                 })
@@ -634,7 +633,7 @@ elif selected_page == "🏢 المخزن الرئيسي":
                 b = r["batches"]
                 it = b["items"]
                 det_list.append({
-                    "الصنف": f"{it['name']} ({it['variant']})",
+                    "الصنف": it['name'],
                     "الشركة الموردة": b["suppliers"]["name"],
                     "رقم التشغيلة": b["lot_number"],
                     "تاريخ الصلاحية": b["expiry_date"],
@@ -677,7 +676,7 @@ elif selected_page == "🛒 الطلبيات":
             sub_u = "اختبار" if it["sub_unit_name"] == "تست" else it["sub_unit_name"]
             if deficit > 0:
                 order_rows.append({
-                    "الصنف": f"{it['name']} ({it['variant']})",
+                    "الصنف": it['name'],
                     "الاستهلاك الشهري الكلي": rate,
                     f"الاحتياج لـ {months_cover} شهور": needed_total,
                     "الرصيد الحالي بالمخزن الرئيسي": current_stock,
@@ -721,7 +720,7 @@ elif selected_page == "🧪 المخازن الفرعية":
             with st.container(border=True):
                 c1, c2, c3 = st.columns([3, 1, 1])
                 with c1:
-                    st.markdown(f"### {it['name']} ({it['variant']}) — شركة **{sup['name']}**")
+                    st.markdown(f"### {it['name']} — شركة **{sup['name']}**")
                     st.write(f"**الرصيد المتاح بالوحدة:** `{int(row['kits_available'])}` {it['unit_name']} ({int(row['tests_available'])} {sub_u}) | **رقم التشغيلة:** `{b['lot_number']}` | **الصلاحية:** `{b['expiry_date']}`")
                 with c2:
                     kits_pull = st.number_input(f"سحب ({it['unit_name']})", min_value=1, max_value=int(row["kits_available"]), value=1, key=f"pull_qty_{row['id']}")
@@ -765,9 +764,8 @@ elif selected_page == "📥 إضافة فاتورة":
         with st.form("receive_batch_form"):
             col1, col2 = st.columns(2)
             with col1:
-                items_df["label"] = items_df["name"] + " - (" + items_df["variant"] + ")"
-                item_choice = st.selectbox("اختر الصنف / التحليل", items_df["label"].tolist())
-                selected_item = items_df[items_df["label"] == item_choice].iloc[0]
+                item_choice = st.selectbox("اختر الصنف / التحليل", items_df["name"].tolist())
+                selected_item = items_df[items_df["name"] == item_choice].iloc[0]
                 sub_u = "اختبار" if selected_item["sub_unit_name"] == "تست" else selected_item["sub_unit_name"]
                 
                 sup_choice = st.selectbox("الشركة الموردة", suppliers_df["name"].tolist())
@@ -814,7 +812,7 @@ elif selected_page == "📥 إضافة فاتورة":
                     st.success(f"🎉 تم إضافة {kits_qty} {selected_item['unit_name']} ({total_tests} {sub_u}) بنجاح إلى المخزن الرئيسي!")
 
 # =========================================================================
-# 6. أذونات الصرف
+# 6. أذونات الصرف (تظهر فقط الأصناف المربوطة بالمخزن/الوحدة الطالبة)
 # =========================================================================
 elif selected_page == "🔄 أذونات الصرف":
     render_page_header("🔄 أذونات الصرف")
@@ -827,6 +825,7 @@ elif selected_page == "🔄 أذونات الصرف":
         sub_locs = locs_df[locs_df["location_type"] != "main"]
         items_df = get_df("items")
         suppliers_df = get_df("suppliers")
+        rates_df = get_df("location_consumption_rates")
         
         if sub_locs.empty or items_df.empty:
             st.warning("تأكد من وجود وحدات/فروع وأصناف مسجلة.")
@@ -840,9 +839,18 @@ elif selected_page == "🔄 أذونات الصرف":
                     loc_choice = st.selectbox("اختر الوحدة / الفرع الطالب", sub_locs["name"].tolist())
                     target_loc_id = int(sub_locs[sub_locs["name"] == loc_choice].iloc[0]["id"])
                 
-                items_df["label"] = items_df["name"] + " - (" + items_df["variant"] + ")"
-                item_choice = st.selectbox("اختر الصنف المطلوب", items_df["label"].tolist(), key="req_item")
-                sel_item = items_df[items_df["label"] == item_choice].iloc[0]
+                # تصفية الأصناف لتظهر فقط الأصناف المربوطة بهذا المخزن/الوحدة
+                if not rates_df.empty and "location_id" in rates_df.columns:
+                    linked_item_ids = rates_df[rates_df["location_id"] == target_loc_id]["item_id"].tolist()
+                    if linked_item_ids:
+                        filtered_items_df = items_df[items_df["id"].isin(linked_item_ids)]
+                    else:
+                        filtered_items_df = items_df
+                else:
+                    filtered_items_df = items_df
+
+                item_choice = st.selectbox("اختر الصنف المطلوب (المخصص لهذه الوحدة/الفرع)", filtered_items_df["name"].tolist(), key="req_item")
+                sel_item = filtered_items_df[filtered_items_df["name"] == item_choice].iloc[0]
                 sub_u = "اختبار" if sel_item["sub_unit_name"] == "تست" else sel_item["sub_unit_name"]
                 
                 sup_choice = st.selectbox("اختر الشركة الموردة", suppliers_df["name"].tolist(), key="req_sup")
@@ -850,7 +858,7 @@ elif selected_page == "🔄 أذونات الصرف":
 
             with c2:
                 rate_res = supabase.table("location_consumption_rates").select("monthly_tests_rate").eq("location_id", target_loc_id).eq("item_id", int(sel_item["id"])).execute()
-                unit_monthly_rate = float(rate_res.data[0]["monthly_tests_rate"]) if rate_res.data else float(sel_item["monthly_consumption_rate"] or 0)
+                unit_monthly_rate = float(rate_res.data[0]["monthly_tests_rate"]) if rate_res.data else 0.0
                 
                 months_needed = st.number_input("المدة المطلوب تغطيتها (بالشهور)", min_value=0.5, max_value=12.0, value=1.0, step=0.5)
                 
@@ -864,7 +872,7 @@ elif selected_page == "🔄 أذونات الصرف":
                     
                     st.success(f"💡 ترشيح النظام (الأقرب صلاحية): **تشغيلة {best_b['batches']['lot_number']}** (تنتهي في `{best_b['batches']['expiry_date']}`) | المتاح بالمخزن الرئيسي: **{int(best_b['kits_available'])}** {sel_item['unit_name']}")
                     if unit_monthly_rate > 0:
-                        st.caption(f"بناءً على استهلاك الوحدة ({unit_monthly_rate} {sub_u}/شهر)، الكمية المقترحة لـ {months_needed} شهر هي **{suggested_kits}** {sel_item['unit_name']}.")
+                        st.caption(f"بناءً على استهلاك هذه الوحدة/الفرع ({unit_monthly_rate} {sub_u}/شهر)، الكمية المقترحة لـ {months_needed} شهر هي **{suggested_kits}** {sel_item['unit_name']}.")
                     
                     kits_to_req = st.number_input(f"عدد الـ ({sel_item['unit_name']}) المطلوب صرفها", min_value=1, max_value=int(best_b["kits_available"]), value=min(suggested_kits, int(best_b["kits_available"])))
                     
@@ -895,7 +903,7 @@ elif selected_page == "🔄 أذونات الصرف":
                 with st.container(border=True):
                     c1, c2 = st.columns([4, 1])
                     with c1:
-                        st.markdown(f"**صرف إلى:** {req['locations']['name']} | **الصنف:** {req['items']['name']} ({req['items']['variant']}) - **{req['suppliers']['name']}**")
+                        st.markdown(f"**صرف إلى:** {req['locations']['name']} | **الصنف:** {req['items']['name']} - **{req['suppliers']['name']}**")
                         st.caption(f"الكمية المعتمدة: **{req['kits_requested']}** {req['items']['unit_name']} | رقم التشغيلة: `{req['batches']['lot_number']}`")
                     with c2:
                         if role in ["main_storekeeper", "general_manager", "chairman"]:
@@ -942,7 +950,7 @@ elif selected_page == "✍️ الموافقات":
             with st.container(border=True):
                 col1, col2, col3 = st.columns([3, 1, 1])
                 with col1:
-                    st.markdown(f"**الجهة الطالبة:** {req['locations']['name']} | **الصنف:** {req['items']['name']} ({req['items']['variant']}) - شركة **{req['suppliers']['name']}**")
+                    st.markdown(f"**الجهة الطالبة:** {req['locations']['name']} | **الصنف:** {req['items']['name']} - شركة **{req['suppliers']['name']}**")
                     st.caption(f"الكمية: **{req['kits_requested']}** {req['items']['unit_name']} ({req['tests_requested']} اختبار/قطعة) | رقم التشغيلة: `{req['batches']['lot_number']}` | الصلاحية: `{req['batches']['expiry_date']}`")
                 with col2:
                     if st.button("✅ موافقة واعتماد", key=f"app_{req['id']}", type="primary", use_container_width=True):
@@ -976,7 +984,7 @@ elif selected_page == "📈 التقارير":
             df_l = pd.DataFrame([{
                 "التاريخ": l["consumed_at"][:10],
                 "الوحدة/الفرع": l["locations"]["name"],
-                "الصنف": f"{l['items']['name']} ({l['items']['variant']})",
+                "الصنف": l['items']['name'],
                 "الشركة الموردة": l["suppliers"]["name"],
                 "الكمية المستهلكة": float(l["tests_consumed"]),
                 "التكلفة الإجمالية (ج.م)": float(l["cost_incurred"])
@@ -1001,7 +1009,7 @@ elif selected_page == "📈 التقارير":
         if batches_res.data:
             df_b = pd.DataFrame([{
                 "تاريخ التوريد": b["received_date"],
-                "الصنف": f"{b['items']['name']} ({b['items']['variant']})",
+                "الصنف": b['items']['name'],
                 "الشركة الموردة": b["suppliers"]["name"],
                 "رقم التشغيلة": b["lot_number"],
                 "سعر الاختبار/القطعة (ج.م)": float(b["unit_price_per_test"]),
@@ -1019,102 +1027,224 @@ elif selected_page == "📈 التقارير":
             st.info("لم يتم تسجيل فواتير توريد بعد.")
 
 # =========================================================================
-# 9. التكويد
+# 9. التكويد (اختيار متعدد للمخازن/الوحدات + معدل استهلاك لكل موقع)
 # =========================================================================
 elif selected_page == "⚙️ التكويد":
     render_page_header("⚙️ التكويد")
     
-    st1, st2, st3, st4 = st.tabs([
-        "🧪 الأصناف (إضافة / تعديل / حذف)", 
-        "🏢 الشركات الموردة (إضافة / تعديل / حذف)", 
-        "🏥 المخازن الفرعية والوحدات",
-        "📏 معدلات الاستهلاك الشهري"
+    st1, st2, st3 = st.tabs([
+        "🧪 الأصناف ومعدلات استهلاكها لكل فرع/وحدة", 
+        "🏢 الشركات الموردة", 
+        "🏥 المخازن الفرعية والوحدات"
     ])
     
+    # --- التبويب الأول: تكويد وتعديل الأصناف وربطها بالمخازن الفرعية والوحدات ---
     with st1:
-        with st.expander("➕ إضافة صنف جديد (محلول / مستهلك)", expanded=True):
-            with st.form("add_item_form"):
-                c1, c2 = st.columns(2)
-                i_name = c1.text_input("اسم الصنف / التحليل (مثال: ALT أو Gloves أو Syringe)")
-                i_var = c2.text_input("المقاس أو النوع (مثال: قياسي، S، M، L، 5ml، EDTA)", value="قياسي")
-                i_cat = c1.selectbox("التصنيف", ["reagent", "consumable"], format_func=lambda x: "محاليل وكواشف (Reagent)" if x == "reagent" else "مستهلكات طبية (Consumable)")
-                i_unit = c2.text_input("وحدة التوريد الكبرى (مثال: علبة أو باكيت)", value="علبة")
-                i_sub = c1.text_input("وحدة القياس الصغرى (مثال: اختبار أو قطعة)", value="اختبار")
-                i_rate = c2.number_input("معدل الاستهلاك الشهري الكلي للمعمل (بالاختبار أو القطعة)", min_value=0.0, step=50.0)
-                
-                if st.form_submit_button("💾 حفظ الصنف الجديد", type="primary"):
-                    if i_name.strip():
-                        try:
-                            supabase.table("items").insert({
-                                "name": i_name.strip(),
-                                "variant": i_var.strip() or "قياسي",
-                                "category": i_cat,
-                                "unit_name": i_unit.strip(),
-                                "sub_unit_name": i_sub.strip(),
-                                "monthly_consumption_rate": float(i_rate)
-                            }).execute()
-                            st.success(f"تم إضافة الصنف ({i_name} - {i_var}) بنجاح!")
-                            st.rerun()
-                        except Exception:
-                            st.error("هذا الصنف بنفس المقاس مسجل بالفعل.")
-                    else:
-                        st.error("برجاء إدخال اسم الصنف.")
+        locs_df = get_df("locations")
+        sub_locs_df = locs_df[locs_df["location_type"] != "main"] if not locs_df.empty else pd.DataFrame()
+        sub_loc_names = sub_locs_df["name"].tolist() if not sub_locs_df.empty else []
+        ALL_LOCS_OPTION = "🌐 كل المخازن الفرعية والوحدات"
+
+        with st.expander("➕ إضافة صنف جديد وربطه بالمخازن الفرعية والوحدات", expanded=True):
+            c1, c2 = st.columns(2)
+            i_name = c1.text_input("اسم الصنف / التحليل (مثال: ALT أو Gloves أو Syringe)", key="new_i_name")
+            i_cat = c2.selectbox("التصنيف", ["reagent", "consumable"], format_func=lambda x: "محاليل وكواشف (Reagent)" if x == "reagent" else "مستهلكات طبية (Consumable)", key="new_i_cat")
+            i_unit = c1.text_input("وحدة التوريد الكبرى (مثال: علبة، باكيت، راك)", value="علبة", key="new_i_unit")
+            i_sub = c2.text_input("وحدة القياس الصغرى (مثال: اختبار، قطعة، أنبوبة)", value="اختبار", key="new_i_sub")
+
+            selected_targets = st.multiselect(
+                "🏥 المخازن الفرعية والوحدات التي تستخدم هذا الصنف:",
+                options=[ALL_LOCS_OPTION] + sub_loc_names,
+                default=[],
+                key="new_item_locs_multi",
+                help="اختر 'كل المخازن الفرعية والوحدات' أو اختر أكثر من فرع/وحدة محددة"
+            )
+
+            # تحديد القائمة الفعلية للوحدات/الفروع المختارة
+            if ALL_LOCS_OPTION in selected_targets:
+                effective_locs = sub_loc_names
+            else:
+                effective_locs = selected_targets
+
+            unit_rates_input = {}
+            if effective_locs:
+                st.markdown(f"#### 📏 حدد معدل الاستهلاك الشهري (بالـ **{i_sub}**) لكل مخزن فرعي / وحدة مختارة:")
+                rate_cols = st.columns(2)
+                for idx, loc_n in enumerate(effective_locs):
+                    with rate_cols[idx % 2]:
+                        unit_rates_input[loc_n] = st.number_input(
+                            f"معدل استهلاك ({loc_n}) شهرياً:",
+                            min_value=0.0,
+                            step=10.0,
+                            key=f"add_rate_{loc_n}"
+                        )
+                total_monthly_rate = sum(unit_rates_input.values())
+                st.info(f"📊 إجمالي الاستهلاك الشهري الكلي للمعمل من هذا الصنف: **{total_monthly_rate:,.0f}** {i_sub}/شهر")
+            else:
+                total_monthly_rate = 0.0
+                st.caption("اختر مخزناً فرعياً أو وحدة واحدة على الأقل لتحديد معدلات الاستهلاك الشهري.")
+
+            if st.button("💾 حفظ الصنف وربطه بالمخازن المختارة", type="primary", use_container_width=True, key="save_new_item_btn"):
+                if not i_name.strip():
+                    st.error("برجاء إدخال اسم الصنف.")
+                elif not effective_locs:
+                    st.error("برجاء اختيار مخزن فرعي أو وحدة واحدة على الأقل.")
+                else:
+                    try:
+                        ins_res = supabase.table("items").insert({
+                            "name": i_name.strip(),
+                            "variant": "عام",
+                            "category": i_cat,
+                            "unit_name": i_unit.strip(),
+                            "sub_unit_name": i_sub.strip(),
+                            "monthly_consumption_rate": float(total_monthly_rate)
+                        }).execute()
+                        new_item_id = ins_res.data[0]["id"]
+
+                        # حفظ معدل استهلاك كل وحدة/فرع مختار
+                        rates_payload = []
+                        for loc_n, r_val in unit_rates_input.items():
+                            l_id = int(sub_locs_df[sub_locs_df["name"] == loc_n].iloc[0]["id"])
+                            rates_payload.append({
+                                "location_id": l_id,
+                                "item_id": int(new_item_id),
+                                "monthly_tests_rate": float(r_val)
+                            })
+                        if rates_payload:
+                            supabase.table("location_consumption_rates").insert(rates_payload).execute()
+
+                        st.success(f"🎉 تم حفظ الصنف ({i_name.strip()}) وربطه بـ {len(effective_locs)} موقع بنجاح!")
+                        st.rerun()
+                    except Exception:
+                        st.error("هذا الصنف مسجل بالفعل. يمكنك تعديله من القسم بالأسفل.")
 
         st.divider()
-        st.subheader("✏️ تعديل أو حذف صنف مسجل")
+        st.subheader("✏️ تعديل أو حذف صنف مسجل (وتعديل المخازن ومعدلات الاستهلاك)")
         items_df = get_df("items")
+        rates_df = get_df("location_consumption_rates")
+
         if not items_df.empty:
-            items_df["label"] = items_df["name"] + " - (" + items_df["variant"] + ")"
-            edit_item_choice = st.selectbox("اختر الصنف المراد تعديله أو حذفه:", items_df["label"].tolist(), key="edit_item_sel")
-            cur_item = items_df[items_df["label"] == edit_item_choice].iloc[0]
-            
-            with st.form("edit_item_form"):
-                ec1, ec2 = st.columns(2)
-                new_i_name = ec1.text_input("اسم الصنف / التحليل", value=cur_item["name"])
-                new_i_var = ec2.text_input("المقاس أو النوع", value=cur_item["variant"])
-                cat_opts = ["reagent", "consumable"]
-                new_i_cat = ec1.selectbox("التصنيف", cat_opts, index=cat_opts.index(cur_item["category"]), format_func=lambda x: "محاليل وكواشف (Reagent)" if x == "reagent" else "مستهلكات طبية (Consumable)")
-                new_i_unit = ec2.text_input("وحدة التوريد الكبرى", value=cur_item["unit_name"])
-                cur_sub_val = "اختبار" if cur_item["sub_unit_name"] == "تست" else cur_item["sub_unit_name"]
-                new_i_sub = ec1.text_input("وحدة القياس الصغرى", value=cur_sub_val)
-                new_i_rate = ec2.number_input("معدل الاستهلاك الشهري الكلي", min_value=0.0, value=float(cur_item["monthly_consumption_rate"] or 0), step=50.0)
-                
-                btn_c1, btn_c2 = st.columns(2)
-                update_item_btn = btn_c1.form_submit_button("💾 حفظ التعديلات", type="primary", use_container_width=True)
-                delete_item_btn = btn_c2.form_submit_button("🗑️ حذف الصنف نهائياً", use_container_width=True)
-                
-                if update_item_btn:
-                    if new_i_name.strip():
+            edit_item_choice = st.selectbox("اختر الصنف المراد تعديله أو حذفه:", items_df["name"].tolist(), key="edit_item_sel")
+            cur_item = items_df[items_df["name"] == edit_item_choice].iloc[0]
+            cur_item_id = int(cur_item["id"])
+
+            # جلب المواقع المربوطة حالياً بهذا الصنف ومعدلاتها
+            cur_rates_map = {}
+            if not rates_df.empty and not sub_locs_df.empty:
+                item_rates_rows = rates_df[rates_df["item_id"] == cur_item_id]
+                for _, rr in item_rates_rows.iterrows():
+                    match_loc = sub_locs_df[sub_locs_df["id"] == rr["location_id"]]
+                    if not match_loc.empty:
+                        cur_rates_map[match_loc.iloc[0]["name"]] = float(rr["monthly_tests_rate"] or 0)
+
+            ec1, ec2 = st.columns(2)
+            new_i_name = ec1.text_input("اسم الصنف / التحليل", value=cur_item["name"], key="upd_i_name")
+            cat_opts = ["reagent", "consumable"]
+            new_i_cat = ec2.selectbox("التصنيف", cat_opts, index=cat_opts.index(cur_item["category"]), format_func=lambda x: "محاليل وكواشف (Reagent)" if x == "reagent" else "مستهلكات طبية (Consumable)", key="upd_i_cat")
+            new_i_unit = ec1.text_input("وحدة التوريد الكبرى", value=cur_item["unit_name"], key="upd_i_unit")
+            cur_sub_val = "اختبار" if cur_item["sub_unit_name"] == "تست" else cur_item["sub_unit_name"]
+            new_i_sub = ec2.text_input("وحدة القياس الصغرى", value=cur_sub_val, key="upd_i_sub")
+
+            default_locs = list(cur_rates_map.keys()) if cur_rates_map else []
+            edit_selected_targets = st.multiselect(
+                "🏥 المخازن الفرعية والوحدات المربوطة بهذا الصنف:",
+                options=[ALL_LOCS_OPTION] + sub_loc_names,
+                default=default_locs,
+                key=f"edit_locs_multi_{cur_item_id}"
+            )
+
+            if ALL_LOCS_OPTION in edit_selected_targets:
+                edit_effective_locs = sub_loc_names
+            else:
+                edit_effective_locs = edit_selected_targets
+
+            edit_unit_rates = {}
+            if edit_effective_locs:
+                st.markdown(f"#### 📏 تعديل معدل الاستهلاك الشهري (بالـ **{new_i_sub}**) لكل مخزن / وحدة:")
+                er_cols = st.columns(2)
+                for idx, loc_n in enumerate(edit_effective_locs):
+                    with er_cols[idx % 2]:
+                        edit_unit_rates[loc_n] = st.number_input(
+                            f"معدل ({loc_n}) شهرياً:",
+                            min_value=0.0,
+                            value=cur_rates_map.get(loc_n, 0.0),
+                            step=10.0,
+                            key=f"upd_rate_{cur_item_id}_{loc_n}"
+                        )
+                upd_total_rate = sum(edit_unit_rates.values())
+                st.info(f"📊 إجمالي الاستهلاك الشهري الكلي المحدّث: **{upd_total_rate:,.0f}** {new_i_sub}/شهر")
+            else:
+                upd_total_rate = 0.0
+
+            btn_c1, btn_c2 = st.columns(2)
+            with btn_c1:
+                if st.button("💾 حفظ تعديلات الصنف والمعدلات", type="primary", use_container_width=True, key="btn_upd_item"):
+                    if not new_i_name.strip():
+                        st.error("برجاء إدخال اسم الصنف.")
+                    elif not edit_effective_locs:
+                        st.error("برجاء اختيار مخزن فرعي أو وحدة واحدة على الأقل.")
+                    else:
                         try:
                             supabase.table("items").update({
                                 "name": new_i_name.strip(),
-                                "variant": new_i_var.strip() or "قياسي",
                                 "category": new_i_cat,
                                 "unit_name": new_i_unit.strip(),
                                 "sub_unit_name": new_i_sub.strip(),
-                                "monthly_consumption_rate": float(new_i_rate)
-                            }).eq("id", int(cur_item["id"])).execute()
-                            st.success("✅ تم تحديث بيانات الصنف بنجاح!")
+                                "monthly_consumption_rate": float(upd_total_rate)
+                            }).eq("id", cur_item_id).execute()
+
+                            # تحديث ربط المواقع ومعدلاتها
+                            supabase.table("location_consumption_rates").delete().eq("item_id", cur_item_id).execute()
+                            new_rates_rows = []
+                            for loc_n, r_val in edit_unit_rates.items():
+                                l_id = int(sub_locs_df[sub_locs_df["name"] == loc_n].iloc[0]["id"])
+                                new_rates_rows.append({
+                                    "location_id": l_id,
+                                    "item_id": cur_item_id,
+                                    "monthly_tests_rate": float(r_val)
+                                })
+                            if new_rates_rows:
+                                supabase.table("location_consumption_rates").insert(new_rates_rows).execute()
+
+                            st.success("✅ تم تحديث بيانات الصنف ومعدلات كل وحدة/فرع بنجاح!")
                             st.rerun()
                         except Exception:
-                            st.error("تعذر التحديث: يوجد صنف آخر بنفس الاسم والمقاس.")
-                            
-                if delete_item_btn:
-                    has_batches = supabase.table("batches").select("id").eq("item_id", int(cur_item["id"])).limit(1).execute()
+                            st.error("تعذر التحديث: يوجد صنف آخر بنفس الاسم.")
+
+            with btn_c2:
+                if st.button("🗑️ حذف الصنف نهائياً", use_container_width=True, key="btn_del_item"):
+                    has_batches = supabase.table("batches").select("id").eq("item_id", cur_item_id).limit(1).execute()
                     if has_batches.data:
                         st.error("❌ لا يمكن حذف هذا الصنف لأنه مرتبط بفواتير توريد أو أرصدة سابقة بالمخزن.")
                     else:
-                        supabase.table("items").delete().eq("id", int(cur_item["id"])).execute()
+                        supabase.table("items").delete().eq("id", cur_item_id).execute()
                         st.success("🗑️ تم حذف الصنف بنجاح!")
                         st.rerun()
 
-            st.markdown("#### 📋 قائمة الأصناف المسجلة حالياً")
-            disp_items = items_df[["id", "name", "variant", "category", "unit_name", "sub_unit_name", "monthly_consumption_rate"]].copy()
-            disp_items["sub_unit_name"] = disp_items["sub_unit_name"].replace({"تست": "اختبار"})
-            disp_items.columns = ["الكود", "الاسم", "النوع/المقاس", "التصنيف", "الوحدة الكبرى", "الوحدة الصغرى", "الاستهلاك الشهري"]
-            disp_items["التصنيف"] = disp_items["التصنيف"].map({"reagent": "محاليل وكواشف", "consumable": "مستهلكات"})
-            st.dataframe(disp_items, use_container_width=True, hide_index=True)
+            st.markdown("#### 📋 قائمة الأصناف والمخازن المرتبطة بها حالياً")
+            summary_items_list = []
+            for _, it_row in items_df.iterrows():
+                iid = int(it_row["id"])
+                linked_names = []
+                if not rates_df.empty and not sub_locs_df.empty:
+                    sub_r = rates_df[rates_df["item_id"] == iid]
+                    for _, rr in sub_r.iterrows():
+                        m_loc = sub_locs_df[sub_locs_df["id"] == rr["location_id"]]
+                        if not m_loc.empty:
+                            linked_names.append(f"{m_loc.iloc[0]['name']} ({int(rr['monthly_tests_rate'])})")
+                sub_u_lbl = "اختبار" if it_row["sub_unit_name"] == "تست" else it_row["sub_unit_name"]
+                summary_items_list.append({
+                    "الكود": iid,
+                    "اسم الصنف": it_row["name"],
+                    "التصنيف": "محاليل وكواشف" if it_row["category"] == "reagent" else "مستهلكات",
+                    "الوحدة الكبرى": it_row["unit_name"],
+                    "الوحدة الصغرى": sub_u_lbl,
+                    "المخازن الفرعية والوحدات (المعدل الشهري)": " | ".join(linked_names) if linked_names else "غير مربوط",
+                    "الإجمالي الشهري الكلي": float(it_row["monthly_consumption_rate"] or 0)
+                })
+            st.dataframe(pd.DataFrame(summary_items_list), use_container_width=True, hide_index=True)
 
+    # --- التبويب الثاني: الشركات الموردة ---
     with st2:
         with st.expander("➕ إضافة شركة موردة جديدة", expanded=True):
             with st.form("add_sup_form"):
@@ -1171,6 +1301,7 @@ elif selected_page == "⚙️ التكويد":
             disp_sups.columns = ["الكود", "اسم الشركة", "بيانات التواصل"]
             st.dataframe(disp_sups, use_container_width=True, hide_index=True)
 
+    # --- التبويب الثالث: المخازن الفرعية والوحدات ---
     with st3:
         st.subheader("🏥 إدارة المخازن الفرعية ووحدات المعمل")
         LOC_TYPE_LABELS = {
@@ -1241,46 +1372,6 @@ elif selected_page == "⚙️ التكويد":
         disp_locs["location_type"] = disp_locs["location_type"].map(LOC_TYPE_LABELS)
         disp_locs.columns = ["الكود", "اسم المخزن / الوحدة", "النوع"]
         st.dataframe(disp_locs, use_container_width=True, hide_index=True)
-
-    with st4:
-        st.subheader("📏 ضبط معدلات الاستهلاك الشهري")
-        items_df = get_df("items")
-        locs_df = get_df("locations")
-        sub_locs = locs_df[locs_df["location_type"] != "main"]
-        
-        if not items_df.empty:
-            items_df["label"] = items_df["name"] + " (" + items_df["variant"] + ")"
-            
-            c_tot, c_unit = st.columns(2)
-            with c_tot:
-                st.markdown("#### 1️⃣ المعدل الشهري الكلي للمعمل (لحساب الطلبيات)")
-                sel_u_item = st.selectbox("اختر الصنف:", items_df["label"].tolist(), key="rate_tot_item")
-                row_it = items_df[items_df["label"] == sel_u_item].iloc[0]
-                new_r = st.number_input("معدل الاستهلاك الشهري الكلي الجديد (اختبار/قطعة):", min_value=0.0, value=float(row_it["monthly_consumption_rate"] or 0), step=50.0, key="rate_tot_val")
-                if st.button("💾 تحديث المعدل الكلي", type="primary"):
-                    supabase.table("items").update({"monthly_consumption_rate": float(new_r)}).eq("id", int(row_it["id"])).execute()
-                    st.success("✅ تم تحديث المعدل الكلي بنجاح!")
-                    st.rerun()
-
-            with c_unit:
-                st.markdown("#### 2️⃣ المعدل الشهري الخاص بكل وحدة/فرع (لأذونات الصرف)")
-                if not sub_locs.empty:
-                    sel_r_loc = st.selectbox("اختر الوحدة / الفرع:", sub_locs["name"].tolist(), key="rate_loc_sel")
-                    r_loc_id = int(sub_locs[sub_locs["name"] == sel_r_loc].iloc[0]["id"])
-                    sel_r_item = st.selectbox("اختر الصنف:", items_df["label"].tolist(), key="rate_loc_item")
-                    r_item_id = int(items_df[items_df["label"] == sel_r_item].iloc[0]["id"])
-                    
-                    existing_r = supabase.table("location_consumption_rates").select("monthly_tests_rate").eq("location_id", r_loc_id).eq("item_id", r_item_id).execute()
-                    cur_u_rate = float(existing_r.data[0]["monthly_tests_rate"]) if existing_r.data else 0.0
-                    
-                    new_u_rate = st.number_input("الاستهلاك الشهري لهذه الوحدة (اختبار/قطعة):", min_value=0.0, value=cur_u_rate, step=25.0, key="rate_loc_val")
-                    if st.button("💾 حفظ معدل الوحدة"):
-                        supabase.table("location_consumption_rates").upsert({
-                            "location_id": r_loc_id,
-                            "item_id": r_item_id,
-                            "monthly_tests_rate": float(new_u_rate)
-                        }, on_conflict="location_id,item_id").execute()
-                        st.success(f"✅ تم حفظ معدل استهلاك ({sel_r_loc}) بنجاح!")
 
 # =========================================================================
 # 10. إدارة المستخدمين والصلاحيات
