@@ -5,11 +5,9 @@ import plotly.graph_objects as go
 from supabase import create_client
 import hashlib
 from datetime import datetime, date, timedelta
-import io
 import os
 import urllib.request
 
-# محاولة استيراد مكتبات توليد PDF العربي
 try:
     from fpdf import FPDF
     import arabic_reshaper
@@ -77,7 +75,6 @@ st.markdown("""
         padding: 0 !important;
     }
 
-    /* رأس الجدول المدمج وخلاياه (في الطلبيات والموافقات والمخازن الفرعية) */
     .tbl-hdr-cell {
         background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%);
         color: #ffffff;
@@ -288,7 +285,7 @@ def render_page_header(title_text: str):
     """, unsafe_allow_html=True)
 
 # =========================================================================
-# دالة توليد ملف PDF عربي منسق للطلبية
+# دالة توليد ملف PDF للطلبية (تعمل دائماً حتى بدون إنترنت إضافي)
 # =========================================================================
 @st.cache_resource
 def get_arabic_font_path():
@@ -299,52 +296,57 @@ def get_arabic_font_path():
             urllib.request.urlretrieve(url, font_path)
         except Exception:
             return None
-    return font_path
+    return font_path if os.path.exists(font_path) else None
 
 def ar_text(text: str) -> str:
-    if not PDF_AVAILABLE:
-        return str(text)
-    reshaped = arabic_reshaper.reshape(str(text))
-    return get_display(reshaped)
+    if PDF_AVAILABLE:
+        try:
+            reshaped = arabic_reshaper.reshape(str(text))
+            return get_display(reshaped)
+        except Exception:
+            return str(text)
+    return str(text)
 
 def generate_order_pdf(df_ord: pd.DataFrame, loc_label: str, months_cover: int) -> bytes:
     if not PDF_AVAILABLE:
         return b""
     font_path = get_arabic_font_path()
     pdf = FPDF(orientation="L", unit="mm", format="A4")
+    pdf.set_auto_page_break(auto=True, margin=12)
     pdf.add_page()
     
-    if font_path and os.path.exists(font_path):
+    use_ar_font = bool(font_path)
+    if use_ar_font:
         pdf.add_font("Amiri", "", font_path, uni=True)
-        pdf.set_font("Amiri", size=18)
+        pdf.set_font("Amiri", size=17)
     else:
-        pdf.set_font("Arial", size=16)
+        pdf.set_font("Helvetica", size=14)
 
-    # ترويسة المعمل
     pdf.set_text_color(14, 77, 146)
-    pdf.cell(0, 12, ar_text("معامل أ.د/ أسامة عبدالمتعال - طلبية شراء واحتياجات"), ln=True, align="C")
+    title_str = "معامل أ.د/ أسامة عبدالمتعال - طلبية شراء واحتياجات" if use_ar_font else "Purchase Order - Lab ERP"
+    pdf.cell(0, 11, ar_text(title_str) if use_ar_font else title_str, ln=True, align="C")
     
-    if font_path and os.path.exists(font_path):
-        pdf.set_font("Amiri", size=12)
+    if use_ar_font:
+        pdf.set_font("Amiri", size=11)
+    else:
+        pdf.set_font("Helvetica", size=10)
     pdf.set_text_color(51, 65, 85)
-    sub_info = f"الجهة: {loc_label}   |   مدة التغطية: {months_cover} شهور   |   تاريخ الطباعة: {date.today()}"
-    pdf.cell(0, 8, ar_text(sub_info), ln=True, align="C")
-    pdf.ln(5)
+    sub_info = f"الجهة: {loc_label}  |  مدة التغطية: {months_cover} شهور  |  التاريخ: {date.today()}" if use_ar_font else f"Location: {loc_label} | Period: {months_cover} Months | Date: {date.today()}"
+    pdf.cell(0, 8, ar_text(sub_info) if use_ar_font else sub_info, ln=True, align="C")
+    pdf.ln(4)
 
-    # أعمدة الجدول من اليمين إلى اليسار
     cols = list(df_ord.columns)[::-1]
     col_widths = [28, 35, 38, 35, 32, 35, 65][:len(cols)]
     if len(col_widths) < len(cols):
         col_widths = [270 / len(cols)] * len(cols)
 
-    # رأس الجدول
     pdf.set_fill_color(14, 77, 146)
     pdf.set_text_color(255, 255, 255)
     for idx, col_name in enumerate(cols):
-        pdf.cell(col_widths[idx], 11, ar_text(col_name), border=1, align="C", fill=True)
+        c_lbl = ar_text(col_name) if use_ar_font else str(col_name)
+        pdf.cell(col_widths[idx], 10, c_lbl, border=1, align="C", fill=True)
     pdf.ln()
 
-    # صفوف البيانات
     pdf.set_text_color(15, 23, 42)
     for row_idx, row in df_ord.iterrows():
         fill_row = (row_idx % 2 == 1)
@@ -352,10 +354,12 @@ def generate_order_pdf(df_ord: pd.DataFrame, loc_label: str, months_cover: int) 
         for idx, col_name in enumerate(cols):
             val = row[col_name]
             val_str = f"{val:,.0f}" if isinstance(val, (int, float)) else str(val)
-            pdf.cell(col_widths[idx], 10, ar_text(val_str), border=1, align="C", fill=True)
+            cell_lbl = ar_text(val_str) if use_ar_font else val_str
+            pdf.cell(col_widths[idx], 10, cell_lbl, border=1, align="C", fill=True)
         pdf.ln()
 
-    return bytes(pdf.output())
+    out = pdf.output()
+    return bytes(out) if isinstance(out, (bytes, bytearray)) else str(out).encode("latin1", errors="ignore")
 
 # =========================================================================
 # الاتصال بقاعدة البيانات السحابية Supabase
@@ -798,7 +802,7 @@ elif selected_page == "🏢 المخزن الرئيسي":
             st.dataframe(df_det, use_container_width=True, hide_index=True)
 
 # =========================================================================
-# 3. الطلبيات (نفس تصميم جدول الموافقات والمخازن الفرعية + تحميل Excel و PDF)
+# 3. الطلبيات
 # =========================================================================
 elif selected_page == "🛒 الطلبيات":
     render_page_header("🛒 الطلبيات")
@@ -873,7 +877,6 @@ elif selected_page == "🛒 الطلبيات":
     if order_rows:
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # جدول منسق بنفس تصميم المخازن الفرعية والموافقات من اليمين إلى اليسار
         ord_col_widths = [1.6, 1.1, 1.1, 1.2, 1.4, 1.3, 1.0]
         ord_headers = [
             "الصنف",
@@ -901,31 +904,28 @@ elif selected_page == "🛒 الطلبيات":
         st.markdown("<br>", unsafe_allow_html=True)
         df_ord = pd.DataFrame(order_rows)
         file_tag = "all_lab" if sel_order_loc == "الكل (إجمالي المعمل)" else sel_order_loc
+        csv_data = df_ord.to_csv(index=False).encode("utf-8-sig")
+        pdf_data = generate_order_pdf(df_ord, sel_order_loc, months_cover)
 
         dl_col1, dl_col2 = st.columns(2)
         with dl_col1:
-            csv = df_ord.to_csv(index=False).encode("utf-8-sig")
             st.download_button(
-                "📥 تحميل الطلبية (Excel / CSV)", 
-                data=csv, 
-                file_name=f"order_{file_tag}_{months_cover}_months.csv", 
-                mime="text/csv", 
+                "📥 تحميل الطلبية (Excel / CSV)",
+                data=csv_data,
+                file_name=f"order_{file_tag}_{months_cover}_months.csv",
+                mime="text/csv",
                 type="primary",
                 use_container_width=True
             )
         with dl_col2:
-            pdf_bytes = generate_order_pdf(df_ord, sel_order_loc, months_cover)
-            if pdf_bytes:
-                st.download_button(
-                    "📄 تحميل الطلبية (PDF)", 
-                    data=pdf_bytes, 
-                    file_name=f"order_{file_tag}_{months_cover}_months.pdf", 
-                    mime="application/pdf", 
-                    type="secondary",
-                    use_container_width=True
-                )
-            else:
-                st.info("لتفعيل تصدير PDF، تأكد من وجود `fpdf2` و `arabic-reshaper` و `python-bidi` في ملف `requirements.txt`.")
+            st.download_button(
+                "📄 تحميل الطلبية (PDF)",
+                data=pdf_data,
+                file_name=f"order_{file_tag}_{months_cover}_months.pdf",
+                mime="application/pdf",
+                type="secondary",
+                use_container_width=True
+            )
     else:
         st.success("✅ لا يوجد عجز مطلوب شراؤه بناءً على الفلاتر والمدة المحددة!")
 
