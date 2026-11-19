@@ -75,7 +75,7 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     padding: 0 !important;
 }
 
-/* الجدول الموحد النظيف (بدون أي مسافات بادئة تسبب عرض نص خام أو None) */
+/* الجدول الموحد النظيف مع دعم تلوين الصف بالكامل */
 .unified-tbl {
     width: 100%;
     border-collapse: separate;
@@ -123,10 +123,10 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     border-bottom-left-radius: 10px;
 }
 .unified-tbl tbody tr:hover td {
-    background-color: #f0f9ff;
+    filter: brightness(0.98);
 }
 
-/* خلايا الصفوف التفاعلية (مثل المخازن الفرعية والموافقات) */
+/* خلايا الصفوف التفاعلية */
 .tbl-hdr-cell {
     background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%);
     color: #ffffff;
@@ -333,14 +333,15 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
 def render_page_header(title_text: str):
     st.markdown(f'<div class="page-header-banner"><h1>{title_text}</h1></div>', unsafe_allow_html=True)
 
-def render_styled_table(headers: list, rows_data: list):
-    """رسم جدول HTML موحد ونظيف تماماً من اليمين لليسار بدون أي مسافات بادئة أو None"""
+def render_styled_table(headers: list, rows_data: list, row_bg_colors: list = None):
+    """رسم جدول HTML موحد من اليمين لليسار مع دعم تلوين الصف بالكامل"""
     if not rows_data:
         return
 
     ths = "".join([f"<th>{str(h) if h is not None else ''}</th>" for h in headers])
     trs_list = []
-    for r_item in rows_data:
+    for r_idx, r_item in enumerate(rows_data):
+        bg_color = row_bg_colors[r_idx] if (row_bg_colors and r_idx < len(row_bg_colors) and row_bg_colors[r_idx]) else "#ffffff"
         tds_list = []
         for cell_val in r_item:
             if isinstance(cell_val, tuple):
@@ -350,7 +351,7 @@ def render_styled_table(headers: list, rows_data: list):
                 raw_txt = cell_val
                 style_str = ""
             safe_txt = str(raw_txt) if raw_txt is not None else ""
-            tds_list.append(f'<td style="{style_str}">{safe_txt}</td>')
+            tds_list.append(f'<td style="background-color:{bg_color}; {style_str}">{safe_txt}</td>')
         trs_list.append("<tr>" + "".join(tds_list) + "</tr>")
 
     html_table = f'<table class="unified-tbl"><thead><tr>{ths}</tr></thead><tbody>{"".join(trs_list)}</tbody></table>'
@@ -614,11 +615,14 @@ with st.sidebar:
             "🛒 الطلبيات",
             "📥 إضافة فاتورة",
             f"📦 أذونات الصرف المعتمدة{approved_badge}",
+            "🔮 التنبؤ بكفاية المخزون الرئيسي",
             "⚙️ التكويد"
         ]
     elif role in ["chairman", "general_manager"]:
         menu_options = [
             "📊 الرئيسية",
+            "⏳ تنبيهات تاريخ الصلاحية",
+            "🔮 التنبؤ بكفاية المخزون الرئيسي",
             "🏢 المخزن الرئيسي",
             "🛒 الطلبيات",
             "🧪 المخازن الفرعية",
@@ -632,6 +636,8 @@ with st.sidebar:
     else:
         menu_options = [
             "🧪 المخازن الفرعية",
+            "⏳ تنبيهات تاريخ الصلاحية",
+            "🔮 التنبؤ بكفاية المخزون الرئيسي",
             "🔄 أذونات الصرف"
         ]
 
@@ -691,7 +697,7 @@ if selected_page == "📊 الرئيسية":
         if r["tests_available"] > 0 and r.get("batches"):
             exp_d = datetime.strptime(r["batches"]["expiry_date"], "%Y-%m-%d").date()
             days_left = (exp_d - today).days
-            if days_left <= 60:
+            if days_left <= 90:
                 expiring_soon.append({
                     "الصنف": r['batches']['items']['name'],
                     "الشركة": r["batches"]["suppliers"]["name"],
@@ -711,7 +717,7 @@ if selected_page == "📊 الرئيسية":
         st.markdown(f'<div class="kpi-card" style="border-top: 5px solid #0d9488;"><div class="kpi-title">🧪 إجمالي السحب ({period_days} يوم)</div><div class="kpi-value" style="color: #0d9488;">{monthly_tests:,.0f} اختبار/قطعة</div></div>', unsafe_allow_html=True)
     with c4:
         alert_color = "#dc2626" if len(expiring_soon) > 0 else "#16a34a"
-        st.markdown(f'<div class="kpi-card" style="border-top: 5px solid {alert_color};"><div class="kpi-title">⚠️ تشغيلات قريبة الانتهاء (≤60 يوم)</div><div class="kpi-value" style="color: {alert_color};">{len(expiring_soon)} تشغيلة</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card" style="border-top: 5px solid {alert_color};"><div class="kpi-title">⚠️ تشغيلات قريبة الانتهاء (≤90 يوم)</div><div class="kpi-value" style="color: {alert_color};">{len(expiring_soon)} تشغيلة</div></div>', unsafe_allow_html=True)
 
     st.divider()
     col_a, col_b = st.columns(2)
@@ -748,50 +754,241 @@ if selected_page == "📊 الرئيسية":
         else:
             st.info("لا توجد أرصدة مسجلة بعد.")
 
-    st.divider()
-    ai_col1, ai_col2 = st.columns(2)
-    with ai_col1:
-        st.markdown("<h3 class='section-center-title'>⏳ تنبيهات الصلاحيات</h3>", unsafe_allow_html=True)
-        if expiring_soon:
-            df_exp = pd.DataFrame(expiring_soon).sort_values("الأيام المتبقية")
-            df_to_styled_table(df_exp)
-        else:
-            st.success("✅ جميع التشغيلات بالمخازن صلاحيتها آمنة (أكثر من 60 يوماً).")
-            
-    with ai_col2:
-        st.markdown("<h3 class='section-center-title'>🔮 التنبؤ بكفاية المخزون الرئيسي</h3>", unsafe_allow_html=True)
-        main_inv = [r for r in inv_data if r["location_id"] == 1 and r["tests_available"] > 0 and r.get("batches")]
-        if main_inv:
-            summary_map = {}
-            for r in main_inv:
-                it = r["batches"]["items"]
-                key = it['name']
-                if key not in summary_map:
-                    summary_map[key] = {"total": 0, "rate": float(it["monthly_consumption_rate"] or 0)}
-                summary_map[key]["total"] += float(r["tests_available"])
-            
-            ai_alerts = []
-            for k, v in summary_map.items():
-                if v["rate"] > 0:
-                    months_left = v["total"] / v["rate"]
-                    status = "🔴 حرج (اطلب فوراً)" if months_left < 1 else ("🟡 تنبيه (أقل من شهرين)" if months_left < 2 else "🟢 آمن")
-                    ai_alerts.append({
-                        "الصنف": k,
-                        "الرصيد الكلي": v["total"],
-                        "الاستهلاك الشهري الكلي": v["rate"],
-                        "يكفي لمدة (شهر)": round(months_left, 1),
-                        "الحالة": status
-                    })
-            if ai_alerts:
-                df_ai = pd.DataFrame(ai_alerts).sort_values("يكفي لمدة (شهر)")
-                df_to_styled_table(df_ai)
+# =========================================================================
+# 2. شاشة مستقلة: تنبيهات تاريخ الصلاحية (تلوين الصف بالكامل + فلاتر)
+# =========================================================================
+elif selected_page == "⏳ تنبيهات تاريخ الصلاحية":
+    render_page_header("⏳ تنبيهات تاريخ الصلاحية")
+
+    inv_res = supabase.table("inventory").select(
+        "*, batches(*, items(id, name, category, unit_name, sub_unit_name), suppliers(name)), locations(id, name, location_type)"
+    ).gt("tests_available", 0).execute()
+    all_inv_rows = inv_res.data or []
+
+    # تحديد النطاق حسب الصلاحية (مشرف الوحدة/الفرع يرى وحدته فقط، والإدارة ترى الكل)
+    if role == "unit_supervisor" and user_loc_id != 1:
+        scoped_rows = [r for r in all_inv_rows if int(r["location_id"]) == int(user_loc_id)]
+        st.markdown(f"<h3 class='section-center-title'>🏥 صلاحيات مخزن: {user_loc_name}</h3>", unsafe_allow_html=True)
+        ef2, ef3 = st.columns(2)
+        sel_exp_loc = user_loc_name
+    else:
+        scoped_rows = all_inv_rows
+        ef1, ef2, ef3 = st.columns(3)
+        with ef1:
+            exp_locs_list = ["الكل"] + sorted(list({r["locations"]["name"] for r in scoped_rows if r.get("locations")}))
+            sel_exp_loc = st.selectbox("🏥 الوحدة / الفرع:", exp_locs_list, key="exp_filter_loc")
+
+    with ef2:
+        exp_items_list = ["الكل"] + sorted(list({r["batches"]["items"]["name"] for r in scoped_rows if r.get("batches") and r["batches"].get("items")}))
+        sel_exp_item = st.selectbox("🧪 الصنف:", exp_items_list, key="exp_filter_item")
+
+    with ef3:
+        sel_exp_cat = st.selectbox("📂 التصنيف (محاليل / مستهلكات):", ["الكل", "محاليل وكواشف", "مستهلكات"], key="exp_filter_cat")
+
+    # دليل الألوان
+    st.markdown("""
+    <div style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; padding:10px 16px; margin-bottom:16px; font-weight:700; font-size:15px;">
+        🎨 <b>دليل ألوان الصلاحية:</b> &nbsp;
+        <span style="background:#fee2e2; color:#991b1b; padding:3px 10px; border-radius:6px; border:1px solid #fca5a5;">🟥 أقل من شهر (≤ 30 يوم)</span> &nbsp;
+        <span style="background:#fef9c3; color:#854d0e; padding:3px 10px; border-radius:6px; border:1px solid #fde047;">🟨 أقل من شهرين (31 - 60 يوم)</span> &nbsp;
+        <span style="background:#dcfce7; color:#166534; padding:3px 10px; border-radius:6px; border:1px solid #86efac;">🟩 أقل من 3 شهور (61 - 90 يوم)</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    today = date.today()
+    exp_table_rows = []
+    exp_row_colors = []
+
+    for r in scoped_rows:
+        if not r.get("batches") or not r["batches"].get("items"):
+            continue
+        b = r["batches"]
+        it = b["items"]
+        loc_n = r["locations"]["name"] if r.get("locations") else "غير محدد"
+        cat_ar = "محاليل وكواشف" if it["category"] == "reagent" else "مستهلكات"
+
+        if sel_exp_loc != "الكل" and loc_n != sel_exp_loc:
+            continue
+        if sel_exp_item != "الكل" and it["name"] != sel_exp_item:
+            continue
+        if sel_exp_cat != "الكل" and cat_ar != sel_exp_cat:
+            continue
+
+        exp_d = datetime.strptime(b["expiry_date"], "%Y-%m-%d").date()
+        days_left = (exp_d - today).days
+
+        # عرض التشغيلات التي صلاحيتها أقل من 3 شهور (90 يوم أو أقل)
+        if days_left <= 90:
+            if days_left <= 30:
+                row_bg = "#fee2e2"
+                status_lbl = "أقل من شهر"
+            elif days_left <= 60:
+                row_bg = "#fef9c3"
+                status_lbl = "أقل من شهرين"
             else:
-                st.info("قم بإدخال معدلات الاستهلاك الشهري للأصناف في التكويد لتفعيل التنبؤ التلقائي.")
-        else:
-            st.info("لا توجد أرصدة في المخزن الرئيسي حالياً.")
+                row_bg = "#dcfce7"
+                status_lbl = "أقل من 3 شهور"
+
+            sub_u = "اختبار" if it["sub_unit_name"] == "تست" else it["sub_unit_name"]
+            exp_table_rows.append([
+                (it["name"], "font-weight:800;"),
+                cat_ar,
+                b["suppliers"]["name"] if b.get("suppliers") else "-",
+                loc_n,
+                b["lot_number"],
+                b["expiry_date"],
+                (f"{days_left} يوم ({status_lbl})", "font-weight:800;"),
+                f"{float(r['tests_available']):,.0f} {sub_u}"
+            ])
+            exp_row_colors.append(row_bg)
+
+    if exp_table_rows:
+        exp_headers = [
+            "الصنف",
+            "التصنيف",
+            "الشركة",
+            "الوحدة / الفرع",
+            "رقم التشغيلة",
+            "تاريخ الصلاحية",
+            "الأيام المتبقية",
+            "الرصيد"
+        ]
+        render_styled_table(exp_headers, exp_table_rows, row_bg_colors=exp_row_colors)
+    else:
+        st.success("✅ لا توجد تشغيلات صلاحيتها أقل من 3 شهور مطابقة للفلاتر المختارة.")
 
 # =========================================================================
-# 2. المخزن الرئيسي
+# 3. شاشة مستقلة: التنبؤ بكفاية المخزون الرئيسي / المخزن الفرعي
+# =========================================================================
+elif selected_page == "🔮 التنبؤ بكفاية المخزون الرئيسي":
+    is_sub_only = (role == "unit_supervisor" and user_loc_id != 1)
+    header_title = f"🔮 التنبؤ بكفاية مخزن ({user_loc_name})" if is_sub_only else "🔮 التنبؤ بكفاية المخزون الرئيسي"
+    render_page_header(header_title)
+
+    items_df = get_df("items")
+    locs_df = get_df("locations")
+    rates_df = get_df("location_consumption_rates")
+    sub_locs_df = locs_df[locs_df["location_type"] != "main"] if not locs_df.empty else pd.DataFrame()
+
+    if is_sub_only:
+        tf2, tf3 = st.columns(2)
+        sel_fc_loc = user_loc_name
+    else:
+        tf1, tf2, tf3 = st.columns(3)
+        with tf1:
+            fc_loc_opts = ["الكل"] + (sub_locs_df["name"].tolist() if not sub_locs_df.empty else [])
+            sel_fc_loc = st.selectbox("🏥 الوحدة / الفرع:", fc_loc_opts, key="fc_filter_loc")
+
+    with tf2:
+        fc_item_opts = ["الكل"] + (sorted(items_df["name"].unique().tolist()) if not items_df.empty else [])
+        sel_fc_item = st.selectbox("🧪 الصنف:", fc_item_opts, key="fc_filter_item")
+
+    with tf3:
+        sel_fc_cat = st.selectbox("📂 التصنيف (محاليل / مستهلكات):", ["الكل", "محاليل وكواشف", "مستهلكات"], key="fc_filter_cat")
+
+    # دليل الألوان للتنبؤ بكفاية المخزون
+    st.markdown("""
+    <div style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; padding:10px 16px; margin-bottom:16px; font-weight:700; font-size:15px;">
+        🎨 <b>دليل ألوان مدة الكفاية:</b> &nbsp;
+        <span style="background:#fee2e2; color:#991b1b; padding:3px 10px; border-radius:6px; border:1px solid #fca5a5;">🟥 تحت الشهر (&lt; 1 شهر - حرج)</span> &nbsp;
+        <span style="background:#fef9c3; color:#854d0e; padding:3px 10px; border-radius:6px; border:1px solid #fde047;">🟨 تحت 3 شهور (1 إلى &lt; 3 شهور - تنبيه)</span> &nbsp;
+        <span style="background:#dcfce7; color:#166534; padding:3px 10px; border-radius:6px; border:1px solid #86efac;">🟩 تحت 6 شهور (3 إلى &lt; 6 شهور)</span> &nbsp;
+        <span style="background:#ffffff; color:#0f172a; padding:3px 10px; border-radius:6px; border:1px solid #94a3b8;">⬜ فوق 6 شهور (≥ 6 شهور)</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    target_inv_loc_id = int(user_loc_id) if is_sub_only else 1
+    inv_res = supabase.table("inventory").select("tests_available, batches(item_id)").eq("location_id", target_inv_loc_id).gt("tests_available", 0).execute()
+
+    stock_by_item = {}
+    for r in (inv_res.data or []):
+        if r.get("batches"):
+            iid = int(r["batches"]["item_id"])
+            stock_by_item[iid] = stock_by_item.get(iid, 0.0) + float(r["tests_available"] or 0)
+
+    fc_rows = []
+    fc_colors = []
+
+    for _, it in items_df.iterrows():
+        iid = int(it["id"])
+        cat_ar = "محاليل وكواشف" if it["category"] == "reagent" else "مستهلكات"
+
+        if sel_fc_item != "الكل" and it["name"] != sel_fc_item:
+            continue
+        if sel_fc_cat != "الكل" and cat_ar != sel_fc_cat:
+            continue
+
+        # فلترة حسب الوحدة/الفرع المرتبط بالصنف
+        if is_sub_only:
+            if not rates_df.empty:
+                m_sub = rates_df[(rates_df["location_id"] == int(user_loc_id)) & (rates_df["item_id"] == iid)]
+                if m_sub.empty:
+                    continue
+                rate = float(m_sub.iloc[0]["monthly_tests_rate"] or 0)
+            else:
+                continue
+        else:
+            if sel_fc_loc != "الكل":
+                chosen_sub_id = int(sub_locs_df[sub_locs_df["name"] == sel_fc_loc].iloc[0]["id"])
+                if rates_df.empty:
+                    continue
+                m_loc = rates_df[(rates_df["location_id"] == chosen_sub_id) & (rates_df["item_id"] == iid)]
+                if m_loc.empty:
+                    continue
+                rate = float(m_loc.iloc[0]["monthly_tests_rate"] or 0)
+            else:
+                rate = float(it["monthly_consumption_rate"] or 0)
+
+        tot_stock = stock_by_item.get(iid, 0.0)
+        if tot_stock <= 0 and rate <= 0:
+            continue
+
+        if rate > 0:
+            months_left = tot_stock / rate
+            months_disp = round(months_left, 1)
+            if months_left < 1:
+                row_bg = "#fee2e2"
+                status_txt = "🔴 حرج (اطلب فوراً)"
+            elif months_left < 3:
+                row_bg = "#fef9c3"
+                status_txt = "🟡 تنبيه (أقل من 3 شهور)"
+            elif months_left < 6:
+                row_bg = "#dcfce7"
+                status_txt = "🟢 متوسط (أقل من 6 شهور)"
+            else:
+                row_bg = "#ffffff"
+                status_txt = "⚪ آمن (فوق 6 شهور)"
+        else:
+            months_disp = "-"
+            row_bg = "#ffffff"
+            status_txt = "غير محدد"
+
+        sub_u = "اختبار" if it["sub_unit_name"] == "تست" else it["sub_unit_name"]
+        fc_rows.append([
+            (it["name"], "font-weight:800;"),
+            cat_ar,
+            f"{tot_stock:,.0f} {sub_u}",
+            f"{rate:,.0f} {sub_u}",
+            (str(months_disp), "font-weight:800;"),
+            (status_txt, "font-weight:800;")
+        ])
+        fc_colors.append(row_bg)
+
+    if fc_rows:
+        fc_headers = [
+            "الصنف",
+            "التصنيف",
+            "الرصيد الحالي",
+            "الاستهلاك الشهري",
+            "يكفي لمدة (شهر)",
+            "الحالة"
+        ]
+        render_styled_table(fc_headers, fc_rows, row_bg_colors=fc_colors)
+    else:
+        st.info("لا توجد بيانات مطابقة للفلاتر المختارة حالياً.")
+
+# =========================================================================
+# 4. المخزن الرئيسي
 # =========================================================================
 elif selected_page == "🏢 المخزن الرئيسي":
     render_page_header("🏢 المخزن الرئيسي")
@@ -884,7 +1081,7 @@ elif selected_page == "🏢 المخزن الرئيسي":
             render_styled_table(det_headers, det_rows)
 
 # =========================================================================
-# 3. الطلبيات
+# 5. الطلبيات
 # =========================================================================
 elif selected_page == "🛒 الطلبيات":
     render_page_header("🛒 الطلبيات")
@@ -1010,7 +1207,7 @@ elif selected_page == "🛒 الطلبيات":
         st.success("✅ لا يوجد عجز مطلوب شراؤه بناءً على الفلاتر والمدة المحددة!")
 
 # =========================================================================
-# 4. المخازن الفرعية
+# 6. المخازن الفرعية
 # =========================================================================
 elif selected_page == "🧪 المخازن الفرعية":
     render_page_header("🧪 المخازن الفرعية")
@@ -1137,7 +1334,7 @@ elif selected_page == "🧪 المخازن الفرعية":
                     st.rerun()
 
 # =========================================================================
-# 5. إضافة فاتورة
+# 7. إضافة فاتورة
 # =========================================================================
 elif selected_page == "📥 إضافة فاتورة":
     render_page_header("📥 إضافة فاتورة")
@@ -1199,7 +1396,7 @@ elif selected_page == "📥 إضافة فاتورة":
                     st.success(f"🎉 تم إضافة {kits_qty} {selected_item['unit_name']} ({total_tests} {sub_u}) بنجاح إلى المخزن الرئيسي!")
 
 # =========================================================================
-# 6. أذونات الصرف المعتمدة (شاشة أمين المخزن لتنفيذ الصرف بعد موافقة المدير العام)
+# 8. أذونات الصرف المعتمدة
 # =========================================================================
 elif selected_page.startswith("📦 أذونات الصرف المعتمدة"):
     render_page_header("📦 أذونات الصرف المعتمدة من المدير العام")
@@ -1261,7 +1458,7 @@ elif selected_page.startswith("📦 أذونات الصرف المعتمدة"):
                     st.rerun()
 
 # =========================================================================
-# 7. أذونات الصرف
+# 9. أذونات الصرف
 # =========================================================================
 elif selected_page == "🔄 أذونات الصرف":
     render_page_header("🔄 أذونات الصرف")
@@ -1385,7 +1582,7 @@ elif selected_page == "🔄 أذونات الصرف":
                                 st.rerun()
 
 # =========================================================================
-# 8. الموافقات
+# 10. الموافقات
 # =========================================================================
 elif selected_page == "✍️ الموافقات":
     render_page_header("✍️ الموافقات")
@@ -1515,7 +1712,7 @@ elif selected_page == "✍️ الموافقات":
                 st.rerun()
 
 # =========================================================================
-# 9. التقارير
+# 11. التقارير
 # =========================================================================
 elif selected_page == "📈 التقارير":
     render_page_header("📈 التقارير")
@@ -1589,7 +1786,7 @@ elif selected_page == "📈 التقارير":
             st.info("لم يتم تسجيل فواتير توريد بعد.")
 
 # =========================================================================
-# 10. التكويد
+# 12. التكويد
 # =========================================================================
 elif selected_page == "⚙️ التكويد":
     render_page_header("⚙️ التكويد")
@@ -1929,7 +2126,7 @@ elif selected_page == "⚙️ التكويد":
         df_to_styled_table(disp_locs)
 
 # =========================================================================
-# 11. إدارة المستخدمين والصلاحيات
+# 13. إدارة المستخدمين والصلاحيات
 # =========================================================================
 elif selected_page == "👥 إدارة المستخدمين والصلاحيات":
     render_page_header("👥 إدارة المستخدمين والصلاحيات")
