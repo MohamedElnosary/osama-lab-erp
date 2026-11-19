@@ -5,6 +5,18 @@ import plotly.graph_objects as go
 from supabase import create_client
 import hashlib
 from datetime import datetime, date, timedelta
+import io
+import os
+import urllib.request
+
+# محاولة استيراد مكتبات توليد PDF العربي
+try:
+    from fpdf import FPDF
+    import arabic_reshaper
+    from bidi.algorithm import get_display
+    PDF_AVAILABLE = True
+except Exception:
+    PDF_AVAILABLE = False
 
 # =========================================================================
 # إعدادات الصفحة والتنسيق العام (هوية بصرية موحدة مريحة للعين وعالية الوضوح)
@@ -65,7 +77,7 @@ st.markdown("""
         padding: 0 !important;
     }
 
-    /* رأس الجدول المدمج وخلاياه (في الموافقات والمخازن الفرعية) */
+    /* رأس الجدول المدمج وخلاياه (في الطلبيات والموافقات والمخازن الفرعية) */
     .tbl-hdr-cell {
         background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%);
         color: #ffffff;
@@ -89,6 +101,7 @@ st.markdown("""
         display: flex;
         align-items: center;
         justify-content: center;
+        margin-bottom: 6px;
     }
 
     .stTabs [data-baseweb="tab-list"] {
@@ -134,18 +147,35 @@ st.markdown("""
         box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
     }
 
-    .stButton > button[kind="primary"], [data-testid="stFormSubmitButton"] > button[kind="primary"] {
+    .stButton > button[kind="primary"], [data-testid="stFormSubmitButton"] > button[kind="primary"],
+    [data-testid="stDownloadButton"] > button[kind="primary"] {
         background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%) !important;
         color: #ffffff !important;
         border: none !important;
         border-radius: 10px !important;
         font-weight: 700 !important;
-        font-size: 15px !important;
-        padding: 8px 10px !important;
+        font-size: 16px !important;
+        padding: 10px 16px !important;
         box-shadow: 0 3px 10px rgba(14, 77, 146, 0.2) !important;
     }
-    .stButton > button[kind="primary"]:hover, [data-testid="stFormSubmitButton"] > button[kind="primary"]:hover {
+    .stButton > button[kind="primary"]:hover, [data-testid="stFormSubmitButton"] > button[kind="primary"]:hover,
+    [data-testid="stDownloadButton"] > button[kind="primary"]:hover {
         background: linear-gradient(90deg, #0b3d75 0%, #0369a1 100%) !important;
+        transform: translateY(-1px);
+    }
+
+    [data-testid="stDownloadButton"] > button[kind="secondary"] {
+        background: linear-gradient(90deg, #b91c1c 0%, #dc2626 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        font-size: 16px !important;
+        padding: 10px 16px !important;
+        box-shadow: 0 3px 10px rgba(185, 28, 28, 0.22) !important;
+    }
+    [data-testid="stDownloadButton"] > button[kind="secondary"]:hover {
+        background: linear-gradient(90deg, #991b1b 0%, #b91c1c 100%) !important;
         transform: translateY(-1px);
     }
 
@@ -256,6 +286,76 @@ def render_page_header(title_text: str):
         <h1>{title_text}</h1>
     </div>
     """, unsafe_allow_html=True)
+
+# =========================================================================
+# دالة توليد ملف PDF عربي منسق للطلبية
+# =========================================================================
+@st.cache_resource
+def get_arabic_font_path():
+    font_path = "/tmp/Amiri-Regular.ttf"
+    if not os.path.exists(font_path):
+        try:
+            url = "https://github.com/google/fonts/raw/main/ofl/amiri/Amiri-Regular.ttf"
+            urllib.request.urlretrieve(url, font_path)
+        except Exception:
+            return None
+    return font_path
+
+def ar_text(text: str) -> str:
+    if not PDF_AVAILABLE:
+        return str(text)
+    reshaped = arabic_reshaper.reshape(str(text))
+    return get_display(reshaped)
+
+def generate_order_pdf(df_ord: pd.DataFrame, loc_label: str, months_cover: int) -> bytes:
+    if not PDF_AVAILABLE:
+        return b""
+    font_path = get_arabic_font_path()
+    pdf = FPDF(orientation="L", unit="mm", format="A4")
+    pdf.add_page()
+    
+    if font_path and os.path.exists(font_path):
+        pdf.add_font("Amiri", "", font_path, uni=True)
+        pdf.set_font("Amiri", size=18)
+    else:
+        pdf.set_font("Arial", size=16)
+
+    # ترويسة المعمل
+    pdf.set_text_color(14, 77, 146)
+    pdf.cell(0, 12, ar_text("معامل أ.د/ أسامة عبدالمتعال - طلبية شراء واحتياجات"), ln=True, align="C")
+    
+    if font_path and os.path.exists(font_path):
+        pdf.set_font("Amiri", size=12)
+    pdf.set_text_color(51, 65, 85)
+    sub_info = f"الجهة: {loc_label}   |   مدة التغطية: {months_cover} شهور   |   تاريخ الطباعة: {date.today()}"
+    pdf.cell(0, 8, ar_text(sub_info), ln=True, align="C")
+    pdf.ln(5)
+
+    # أعمدة الجدول من اليمين إلى اليسار
+    cols = list(df_ord.columns)[::-1]
+    col_widths = [28, 35, 38, 35, 32, 35, 65][:len(cols)]
+    if len(col_widths) < len(cols):
+        col_widths = [270 / len(cols)] * len(cols)
+
+    # رأس الجدول
+    pdf.set_fill_color(14, 77, 146)
+    pdf.set_text_color(255, 255, 255)
+    for idx, col_name in enumerate(cols):
+        pdf.cell(col_widths[idx], 11, ar_text(col_name), border=1, align="C", fill=True)
+    pdf.ln()
+
+    # صفوف البيانات
+    pdf.set_text_color(15, 23, 42)
+    for row_idx, row in df_ord.iterrows():
+        fill_row = (row_idx % 2 == 1)
+        pdf.set_fill_color(241, 245, 249) if fill_row else pdf.set_fill_color(255, 255, 255)
+        for idx, col_name in enumerate(cols):
+            val = row[col_name]
+            val_str = f"{val:,.0f}" if isinstance(val, (int, float)) else str(val)
+            pdf.cell(col_widths[idx], 10, ar_text(val_str), border=1, align="C", fill=True)
+        pdf.ln()
+
+    return bytes(pdf.output())
 
 # =========================================================================
 # الاتصال بقاعدة البيانات السحابية Supabase
@@ -698,7 +798,7 @@ elif selected_page == "🏢 المخزن الرئيسي":
             st.dataframe(df_det, use_container_width=True, hide_index=True)
 
 # =========================================================================
-# 3. الطلبيات
+# 3. الطلبيات (نفس تصميم جدول الموافقات والمخازن الفرعية + تحميل Excel و PDF)
 # =========================================================================
 elif selected_page == "🛒 الطلبيات":
     render_page_header("🛒 الطلبيات")
@@ -771,22 +871,66 @@ elif selected_page == "🛒 الطلبيات":
                 })
     
     if order_rows:
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # جدول منسق بنفس تصميم المخازن الفرعية والموافقات من اليمين إلى اليسار
+        ord_col_widths = [1.6, 1.1, 1.1, 1.2, 1.4, 1.3, 1.0]
+        ord_headers = [
+            "الصنف",
+            "التصنيف",
+            "الاستهلاك الشهري",
+            f"الاحتياج ({months_cover} شهور)",
+            stock_col_title,
+            "العجز المطلوب شراؤه",
+            "الوحدة"
+        ]
+        o_hdr_cols = st.columns(ord_col_widths)
+        for idx, h_title in enumerate(ord_headers):
+            o_hdr_cols[idx].markdown(f"<div class='tbl-hdr-cell'>{h_title}</div>", unsafe_allow_html=True)
+
+        for r_item in order_rows:
+            o_row_cols = st.columns(ord_col_widths)
+            o_row_cols[0].markdown(f"<div class='tbl-row-cell' style='color:#0e4d92;'>{r_item['الصنف']}</div>", unsafe_allow_html=True)
+            o_row_cols[1].markdown(f"<div class='tbl-row-cell'>{r_item['التصنيف']}</div>", unsafe_allow_html=True)
+            o_row_cols[2].markdown(f"<div class='tbl-row-cell'>{r_item['الاستهلاك الشهري']:,.0f}</div>", unsafe_allow_html=True)
+            o_row_cols[3].markdown(f"<div class='tbl-row-cell'>{r_item[f'الاحتياج لـ {months_cover} شهور']:,.0f}</div>", unsafe_allow_html=True)
+            o_row_cols[4].markdown(f"<div class='tbl-row-cell'>{r_item[stock_col_title]:,.0f}</div>", unsafe_allow_html=True)
+            o_row_cols[5].markdown(f"<div class='tbl-row-cell' style='color:#dc2626; font-weight:800;'>{r_item['العجز المطلوب شراؤه']:,.0f}</div>", unsafe_allow_html=True)
+            o_row_cols[6].markdown(f"<div class='tbl-row-cell' style='color:#0d9488;'>{r_item['الوحدة']}</div>", unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
         df_ord = pd.DataFrame(order_rows)
-        st.dataframe(df_ord, use_container_width=True, hide_index=True)
-        csv = df_ord.to_csv(index=False).encode("utf-8-sig")
         file_tag = "all_lab" if sel_order_loc == "الكل (إجمالي المعمل)" else sel_order_loc
-        st.download_button(
-            "📥 تحميل الطلبية (Excel / CSV)", 
-            data=csv, 
-            file_name=f"order_{file_tag}_{months_cover}_months.csv", 
-            mime="text/csv", 
-            type="primary"
-        )
+
+        dl_col1, dl_col2 = st.columns(2)
+        with dl_col1:
+            csv = df_ord.to_csv(index=False).encode("utf-8-sig")
+            st.download_button(
+                "📥 تحميل الطلبية (Excel / CSV)", 
+                data=csv, 
+                file_name=f"order_{file_tag}_{months_cover}_months.csv", 
+                mime="text/csv", 
+                type="primary",
+                use_container_width=True
+            )
+        with dl_col2:
+            pdf_bytes = generate_order_pdf(df_ord, sel_order_loc, months_cover)
+            if pdf_bytes:
+                st.download_button(
+                    "📄 تحميل الطلبية (PDF)", 
+                    data=pdf_bytes, 
+                    file_name=f"order_{file_tag}_{months_cover}_months.pdf", 
+                    mime="application/pdf", 
+                    type="secondary",
+                    use_container_width=True
+                )
+            else:
+                st.info("لتفعيل تصدير PDF، تأكد من وجود `fpdf2` و `arabic-reshaper` و `python-bidi` في ملف `requirements.txt`.")
     else:
         st.success("✅ لا يوجد عجز مطلوب شراؤه بناءً على الفلاتر والمدة المحددة!")
 
 # =========================================================================
-# 4. المخازن الفرعية (نفس تصميم جدول الموافقات + فلتر الشركة الموردة)
+# 4. المخازن الفرعية
 # =========================================================================
 elif selected_page == "🧪 المخازن الفرعية":
     render_page_header("🧪 المخازن الفرعية")
@@ -795,7 +939,6 @@ elif selected_page == "🧪 المخازن الفرعية":
     sub_locs = locs_df[locs_df["location_type"] != "main"]
     
     if role in ["chairman", "general_manager"]:
-        # 4 فلاتر للمدير العام ورئيس مجلس الإدارة: الوحدة + التصنيف + اسم الصنف + الشركة الموردة
         fc1, fc2, fc3, fc4 = st.columns(4)
         with fc1:
             loc_name = st.selectbox("🏥 الوحدة / الفرع:", sub_locs["name"].tolist(), key="sub_loc_gm")
@@ -803,7 +946,6 @@ elif selected_page == "🧪 المخازن الفرعية":
         with fc2:
             sub_cat_filter = st.selectbox("📂 التصنيف:", ["الكل", "محاليل وكواشف", "مستهلكات"], key="sub_cat_gm")
     else:
-        # 3 فلاتر لمشرف الوحدة/الفرع: التصنيف + اسم الصنف + الشركة الموردة
         sel_loc_id = user_loc_id
         st.markdown(f"<h3 class='section-center-title'>🏥 مخزن: {user_loc_name}</h3>", unsafe_allow_html=True)
         fc2, fc3, fc4 = st.columns(3)
@@ -813,14 +955,12 @@ elif selected_page == "🧪 المخازن الفرعية":
     sub_inv = supabase.table("inventory").select("*, batches(*, items(id, name, category, unit_name, sub_unit_name), suppliers(id, name))").eq("location_id", sel_loc_id).gt("kits_available", 0).execute()
     raw_rows = sub_inv.data or []
 
-    # 1. تصفية بالتصنيف
     cat_filtered_rows = []
     for r in raw_rows:
         it_cat = "محاليل وكواشف" if r["batches"]["items"]["category"] == "reagent" else "مستهلكات"
         if sub_cat_filter == "الكل" or it_cat == sub_cat_filter:
             cat_filtered_rows.append(r)
 
-    # 2. فلتر اسم المحلول / المستهلك
     available_item_names = sorted(list({r["batches"]["items"]["name"] for r in cat_filtered_rows}))
     with fc3:
         item_label_title = "🧪 اسم المحلول:" if sub_cat_filter == "محاليل وكواشف" else ("🧤 اسم المستهلك:" if sub_cat_filter == "مستهلكات" else "🔍 اسم الصنف:")
@@ -831,7 +971,6 @@ elif selected_page == "🧪 المخازن الفرعية":
         if sel_sub_item == "الكل" or r["batches"]["items"]["name"] == sel_sub_item
     ]
 
-    # 3. فلتر الشركة الموردة
     available_sup_names = sorted(list({r["batches"]["suppliers"]["name"] for r in item_filtered_rows}))
     with fc4:
         sel_sub_sup = st.selectbox("🏭 الشركة الموردة:", ["الكل"] + available_sup_names, key="sub_sup_filter")
@@ -846,7 +985,6 @@ elif selected_page == "🧪 المخازن الفرعية":
     else:
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # جدول منظم من اليمين إلى اليسار مع خانة الكمية وزرار سحب للجهاز جنب كل صف
         sub_col_widths = [1.4, 1.0, 1.1, 1.5, 1.0, 1.0, 0.9, 1.1]
         sub_headers = [
             "الصنف",
