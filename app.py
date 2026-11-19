@@ -226,12 +226,12 @@ with st.sidebar:
     
     menu_options = []
     if role in ["chairman", "general_manager"]:
-        menu_options.append("📊 الرئيسيه")
+        menu_options.append("📊 لوحة القيادة والذكاء الاصطناعي")
     if role in ["chairman", "general_manager", "main_storekeeper"]:
-        menu_options.append("🏢 المخزن الرئيسي ")
+        menu_options.append("🏢 المخزن الرئيسي (عرض مزدوج)")
         menu_options.append("📥 توريد فاتورة / إضافة رصيد")
     menu_options.append("🔄 طلبات الصرف والموافقات")
-    menu_options.append("🧪 المخازن الفرعية ")
+    menu_options.append("🧪 المخازن الفرعية والسحب للأجهزة")
     if role in ["chairman", "general_manager", "main_storekeeper"]:
         menu_options.append("🛒 طلبيات الشراء من الشركات")
         menu_options.append("📈 التقارير المالية ومقارنة الأسعار")
