@@ -658,7 +658,7 @@ elif selected_page == "🏢 المخزن الرئيسي":
             st.dataframe(df_det, use_container_width=True, hide_index=True)
 
 # =========================================================================
-# 3. الطلبيات (فلاتر بالوحدة/الفرع والصنف + عمود موحد للعجز + عمود للوحدة)
+# 3. الطلبيات
 # =========================================================================
 elif selected_page == "🛒 الطلبيات":
     render_page_header("🛒 الطلبيات")
@@ -667,7 +667,6 @@ elif selected_page == "🛒 الطلبيات":
     locs_df = get_df("locations")
     rates_df = get_df("location_consumption_rates")
     
-    # فلاتر التصفية في الطلبيات
     f1, f2, f3 = st.columns(3)
     with f1:
         sub_locs = locs_df[locs_df["location_type"] != "main"] if not locs_df.empty else pd.DataFrame()
@@ -681,7 +680,6 @@ elif selected_page == "🛒 الطلبيات":
 
     months_cover = st.slider("📅 حدد عدد الشهور المطلوب تغطيتها في الطلبية:", min_value=1, max_value=12, value=3)
     
-    # جلب الأرصدة الحالية (من المخزن الرئيسي لو "الكل"، أو من مخزن الوحدة/الفرع المختار)
     if sel_order_loc == "الكل (إجمالي المعمل)":
         inv_res = supabase.table("inventory").select("tests_available, batches(item_id)").eq("location_id", 1).execute()
     else:
@@ -699,13 +697,11 @@ elif selected_page == "🛒 الطلبيات":
         iid = int(it["id"])
         it_cat_ar = "محاليل وكواشف" if it["category"] == "reagent" else "مستهلكات"
         
-        # تطبيق فلتر التصنيف وفلتر الصنف
         if cat_filter != "الكل" and it_cat_ar != cat_filter:
             continue
         if sel_order_item != "الكل" and it["name"] != sel_order_item:
             continue
         
-        # تحديد معدل الاستهلاك الشهري بناءً على الفلتر (كل المعمل أم وحدة/فرع محدد)
         if sel_order_loc == "الكل (إجمالي المعمل)":
             rate = float(it["monthly_consumption_rate"] or 0)
             stock_col_title = "الرصيد الحالي بالمخزن الرئيسي"
@@ -758,27 +754,52 @@ elif selected_page == "🧪 المخازن الفرعية":
     locs_df = get_df("locations")
     sub_locs = locs_df[locs_df["location_type"] != "main"]
     
-    if role == "unit_supervisor" and user_loc_id != 1:
+    if role in ["chairman", "general_manager"]:
+        fc1, fc2, fc3 = st.columns(3)
+        with fc1:
+            loc_name = st.selectbox("🏥 الوحدة / الفرع:", sub_locs["name"].tolist(), key="sub_loc_gm")
+            sel_loc_id = int(sub_locs[sub_locs["name"] == loc_name].iloc[0]["id"])
+        with fc2:
+            sub_cat_filter = st.selectbox("📂 التصنيف (محاليل / مستهلكات):", ["الكل", "محاليل وكواشف", "مستهلكات"], key="sub_cat_gm")
+    else:
         sel_loc_id = user_loc_id
-        st.subheader(f"مخزن: {user_loc_name}")
+        st.markdown(f"<h3 class='section-center-title'>🏥 مخزن: {user_loc_name}</h3>", unsafe_allow_html=True)
+        fc2, fc3 = st.columns(2)
+        with fc2:
+            sub_cat_filter = st.selectbox("📂 التصنيف (محاليل / مستهلكات):", ["الكل", "محاليل وكواشف", "مستهلكات"], key="sub_cat_sup")
+
+    sub_inv = supabase.table("inventory").select("*, batches(*, items(id, name, category, unit_name, sub_unit_name), suppliers(id, name))").eq("location_id", sel_loc_id).gt("kits_available", 0).execute()
+    raw_rows = sub_inv.data or []
+
+    cat_filtered_rows = []
+    for r in raw_rows:
+        it_cat = "محاليل وكواشف" if r["batches"]["items"]["category"] == "reagent" else "مستهلكات"
+        if sub_cat_filter == "الكل" or it_cat == sub_cat_filter:
+            cat_filtered_rows.append(r)
+
+    available_item_names = sorted(list({r["batches"]["items"]["name"] for r in cat_filtered_rows}))
+    with fc3:
+        item_label_title = "🧪 اسم المحلول:" if sub_cat_filter == "محاليل وكواشف" else ("🧤 اسم المستهلك:" if sub_cat_filter == "مستهلكات" else "🔍 اسم المحلول / المستهلك:")
+        sel_sub_item = st.selectbox(item_label_title, ["الكل"] + available_item_names, key="sub_item_filter")
+
+    final_sub_rows = [
+        r for r in cat_filtered_rows 
+        if sel_sub_item == "الكل" or r["batches"]["items"]["name"] == sel_sub_item
+    ]
+
+    if not final_sub_rows:
+        st.info("لا توجد أرصدة مطابقة للفلاتر المختارة في هذه الوحدة حالياً.")
     else:
-        loc_name = st.selectbox("اختر الوحدة / الفرع لعرض رصيده وتسجيل السحب:", sub_locs["name"].tolist())
-        sel_loc_id = int(sub_locs[sub_locs["name"] == loc_name].iloc[0]["id"])
-    
-    sub_inv = supabase.table("inventory").select("*, batches(*, items(id, name, variant, unit_name, sub_unit_name), suppliers(id, name))").eq("location_id", sel_loc_id).gt("kits_available", 0).execute()
-    
-    if not sub_inv.data:
-        st.info("لا توجد أرصدة حالياً في هذه الوحدة. يمكنك طلب صرفية من صفحة '🔄 أذونات الصرف'.")
-    else:
-        for row in sub_inv.data:
+        for row in final_sub_rows:
             b = row["batches"]
             it = b["items"]
             sup = b["suppliers"]
             sub_u = "اختبار" if it["sub_unit_name"] == "تست" else it["sub_unit_name"]
+            cat_badge = "محاليل وكواشف" if it["category"] == "reagent" else "مستهلكات"
             with st.container(border=True):
                 c1, c2, c3 = st.columns([3, 1, 1])
                 with c1:
-                    st.markdown(f"### {it['name']} — شركة **{sup['name']}**")
+                    st.markdown(f"### {it['name']} ({cat_badge}) — شركة **{sup['name']}**")
                     st.write(f"**الرصيد المتاح بالوحدة:** `{int(row['kits_available'])}` {it['unit_name']} ({int(row['tests_available'])} {sub_u}) | **رقم التشغيلة:** `{b['lot_number']}` | **الصلاحية:** `{b['expiry_date']}`")
                 with c2:
                     kits_pull = st.number_input(f"سحب ({it['unit_name']})", min_value=1, max_value=int(row["kits_available"]), value=1, key=f"pull_qty_{row['id']}")
@@ -917,7 +938,7 @@ elif selected_page.startswith("📦 أذونات الصرف المعتمدة"):
                         st.rerun()
 
 # =========================================================================
-# 7. أذونات الصرف (للمشرفين والإدارة: إنشاء طلب صرف + متابعة المعتمدة)
+# 7. أذونات الصرف
 # =========================================================================
 elif selected_page == "🔄 أذونات الصرف":
     render_page_header("🔄 أذونات الصرف")
@@ -1041,33 +1062,70 @@ elif selected_page == "🔄 أذونات الصرف":
                                 st.rerun()
 
 # =========================================================================
-# 8. الموافقات
+# 8. الموافقات (فلاتر بالوحدة والصنف + زر موافقة واعتماد All)
 # =========================================================================
 elif selected_page == "✍️ الموافقات":
     render_page_header("✍️ الموافقات")
     
-    pending = supabase.table("transfer_requests").select("*, locations!transfer_requests_to_location_id_fkey(name), items(name, variant, unit_name), suppliers(name), batches(lot_number, expiry_date)").eq("status", "pending_gm").execute()
-    if not pending.data:
+    pending_res = supabase.table("transfer_requests").select("*, locations!transfer_requests_to_location_id_fkey(name), items(name, variant, unit_name), suppliers(name), batches(lot_number, expiry_date)").eq("status", "pending_gm").execute()
+    all_pending = pending_res.data or []
+    
+    if not all_pending:
         st.info("✅ لا توجد أذونات صرف معلقة بانتظار الموافقة حالياً.")
     else:
-        for req in pending.data:
-            with st.container(border=True):
-                col1, col2, col3 = st.columns([3, 1, 1])
-                with col1:
-                    st.markdown(f"**الجهة الطالبة:** {req['locations']['name']} | **الصنف:** {req['items']['name']} - شركة **{req['suppliers']['name']}**")
-                    st.caption(f"الكمية: **{req['kits_requested']}** {req['items']['unit_name']} ({req['tests_requested']} اختبار/قطعة) | رقم التشغيلة: `{req['batches']['lot_number']}` | الصلاحية: `{req['batches']['expiry_date']}`")
-                with col2:
-                    if st.button("✅ موافقة واعتماد", key=f"app_{req['id']}", type="primary", use_container_width=True):
-                        supabase.table("transfer_requests").update({
-                            "status": "approved_ready_to_issue",
-                            "approved_by": user["id"],
-                            "approved_at": datetime.now().isoformat()
-                        }).eq("id", req["id"]).execute()
-                        st.rerun()
-                with col3:
-                    if st.button("❌ رفض", key=f"rej_{req['id']}", use_container_width=True):
-                        supabase.table("transfer_requests").update({"status": "rejected"}).eq("id", req["id"]).execute()
-                        st.rerun()
+        # فلاتر التصفية بناءً على الوحدة/الفرع وبناءً على الصنف
+        af1, af2 = st.columns(2)
+        with af1:
+            pending_locs = ["الكل"] + sorted(list({r["locations"]["name"] for r in all_pending if r.get("locations")}))
+            sel_app_loc = st.selectbox("🏥 تصفية حسب الوحدة / الفرع:", pending_locs, key="app_filter_loc")
+        with af2:
+            loc_filtered_pending = [
+                r for r in all_pending 
+                if sel_app_loc == "الكل" or (r.get("locations") and r["locations"]["name"] == sel_app_loc)
+            ]
+            pending_items = ["الكل"] + sorted(list({r["items"]["name"] for r in loc_filtered_pending if r.get("items")}))
+            sel_app_item = st.selectbox("🧪 تصفية حسب الصنف:", pending_items, key="app_filter_item")
+
+        filtered_pending = [
+            r for r in loc_filtered_pending 
+            if sel_app_item == "الكل" or (r.get("items") and r["items"]["name"] == sel_app_item)
+        ]
+
+        if not filtered_pending:
+            st.warning("لا توجد طلبات مطابقة للفلاتر المختارة.")
+        else:
+            # زر الاعتماد الجماعي لكل الطلبات المفلترة الظاهرة أمامك
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button(f"✅ موافقة واعتماد All ({len(filtered_pending)} طلب)", type="primary", use_container_width=True, key="approve_all_filtered_btn"):
+                ids_to_approve = [r["id"] for r in filtered_pending]
+                supabase.table("transfer_requests").update({
+                    "status": "approved_ready_to_issue",
+                    "approved_by": user["id"],
+                    "approved_at": datetime.now().isoformat()
+                }).in_("id", ids_to_approve).execute()
+                st.success(f"🎉 تم اعتماد والموافقة على {len(ids_to_approve)} طلب دفعة واحدة!")
+                st.rerun()
+
+            st.divider()
+            # عرض كل طلب على حدة مع أزرار الموافقة أو الرفض الفردية
+            for req in filtered_pending:
+                with st.container(border=True):
+                    col1, col2, col3 = st.columns([3, 1, 1])
+                    with col1:
+                        st.markdown(f"**الجهة الطالبة:** {req['locations']['name']} | **الصنف:** {req['items']['name']} - شركة **{req['suppliers']['name']}**")
+                        st.caption(f"الكمية: **{req['kits_requested']}** {req['items']['unit_name']} ({req['tests_requested']} اختبار/قطعة) | رقم التشغيلة: `{req['batches']['lot_number']}` | الصلاحية: `{req['batches']['expiry_date']}`")
+                    with col2:
+                        if st.button("✅ موافقة واعتماد", key=f"app_{req['id']}", type="primary", use_container_width=True):
+                            supabase.table("transfer_requests").update({
+                                "status": "approved_ready_to_issue",
+                                "approved_by": user["id"],
+                                "approved_at": datetime.now().isoformat()
+                            }).eq("id", req["id"]).execute()
+                            st.rerun()
+                    with col3:
+                        if st.button("❌ رفض", key=f"rej_{req['id']}", use_container_width=True):
+                            supabase.table("transfer_requests").update({"status": "rejected"}).eq("id", req["id"]).execute()
+                            st.rerun()
 
 # =========================================================================
 # 9. التقارير
