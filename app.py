@@ -368,7 +368,7 @@ def df_to_styled_table(df: pd.DataFrame):
     render_styled_table(headers, rows_data)
 
 # =========================================================================
-# دالة توليد ملف PDF عام للتقارير والطلبيات
+# دالة توليد ملف PDF عام للتقارير والطلبيات (تُرجع بايتس صالحة دائماً بدون None)
 # =========================================================================
 @st.cache_resource
 def get_arabic_font_path():
@@ -390,31 +390,45 @@ def ar_text(text: str) -> str:
             return str(text)
     return str(text)
 
+def _ascii_safe(text: str) -> str:
+    return str(text).encode("latin1", errors="replace").decode("latin1")
+
 def generate_pdf_report(df_rep: pd.DataFrame, report_title: str, subtitle_info: str = "") -> bytes:
-    if not PDF_AVAILABLE or df_rep is None or df_rep.empty:
-        return b""
+    if df_rep is None or df_rep.empty:
+        return b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<< /Root 1 0 R >>\n%%EOF"
+
+    if not PDF_AVAILABLE:
+        txt_payload = f"{report_title}\n{subtitle_info}\n\n" + df_rep.to_string(index=False)
+        return _ascii_safe(txt_payload).encode("latin1", errors="replace")
+
     font_path = get_arabic_font_path()
     pdf = FPDF(orientation="L", unit="mm", format="A4")
     pdf.set_auto_page_break(auto=True, margin=12)
     pdf.add_page()
-    
+
     use_ar_font = bool(font_path)
     if use_ar_font:
-        pdf.add_font("Amiri", "", font_path, uni=True)
-        pdf.set_font("Amiri", size=17)
+        try:
+            pdf.add_font("Amiri", "", font_path, uni=True)
+            pdf.set_font("Amiri", size=16)
+        except Exception:
+            use_ar_font = False
+            pdf.set_font("Helvetica", size=14)
     else:
         pdf.set_font("Helvetica", size=14)
 
     pdf.set_text_color(14, 77, 146)
-    header_line = f"معامل أ.د/ أسامة عبدالمتعال - {report_title}" if use_ar_font else f"Lab ERP - {report_title}"
+    header_line = f"معامل أ.د/ أسامة عبدالمتعال - {report_title}" if use_ar_font else _ascii_safe(f"Lab ERP - {report_title}")
     pdf.cell(0, 11, ar_text(header_line) if use_ar_font else header_line, ln=True, align="C")
-    
+
     if use_ar_font:
         pdf.set_font("Amiri", size=11)
     else:
         pdf.set_font("Helvetica", size=10)
     pdf.set_text_color(51, 65, 85)
     sub_line = subtitle_info if subtitle_info else f"تاريخ الطباعة: {date.today()}"
+    if not use_ar_font:
+        sub_line = _ascii_safe(f"Date: {date.today()}")
     pdf.cell(0, 8, ar_text(sub_line) if use_ar_font else sub_line, ln=True, align="C")
     pdf.ln(4)
 
@@ -424,7 +438,7 @@ def generate_pdf_report(df_rep: pd.DataFrame, report_title: str, subtitle_info: 
     pdf.set_fill_color(14, 77, 146)
     pdf.set_text_color(255, 255, 255)
     for col_name in cols:
-        c_lbl = ar_text(col_name) if use_ar_font else str(col_name)
+        c_lbl = ar_text(col_name) if use_ar_font else _ascii_safe(f"Col_{len(cols)}")
         pdf.cell(col_w, 10, c_lbl, border=1, align="C", fill=True)
     pdf.ln()
 
@@ -435,12 +449,14 @@ def generate_pdf_report(df_rep: pd.DataFrame, report_title: str, subtitle_info: 
         for col_name in cols:
             val = row[col_name]
             val_str = f"{val:,.2f}" if isinstance(val, float) else (f"{val:,}" if isinstance(val, int) else str(val))
-            cell_lbl = ar_text(val_str) if use_ar_font else val_str
+            cell_lbl = ar_text(val_str) if use_ar_font else _ascii_safe(val_str)
             pdf.cell(col_w, 10, cell_lbl, border=1, align="C", fill=True)
         pdf.ln()
 
     out = pdf.output()
-    return bytes(out) if isinstance(out, (bytes, bytearray)) else str(out).encode("latin1", errors="ignore")
+    if isinstance(out, (bytes, bytearray)):
+        return bytes(out)
+    return str(out).encode("latin1", errors="replace")
 
 def render_export_buttons(df_export: pd.DataFrame, base_filename: str, report_title: str, subtitle_info: str = "", key_prefix: str = "exp"):
     """عرض زري تحميل Excel و PDF متجاورين أسفل أي تقرير"""
@@ -996,7 +1012,7 @@ elif selected_page == "🔮 التنبؤ بكفاية المخزون الرئي�
         st.info("لا توجد بيانات مطابقة للفلاتر المختارة حالياً.")
 
 # =========================================================================
-# 4. شاشة مستقلة جديدة: شاشة الهدر
+# 4. شاشة مستقلة: شاشة الهدر (بالهدر المسموح به % ومنع التكرار المتشابه)
 # =========================================================================
 elif selected_page == "📉 شاشة الهدر":
     render_page_header("📉 شاشة الهدر")
@@ -1037,19 +1053,32 @@ elif selected_page == "📉 شاشة الهدر":
                 w_from = p_col1.date_input("📅 من تاريخ:", value=date.today().replace(month=1, day=1), key="w_from_date")
                 w_to = p_col2.date_input("📅 إلى تاريخ:", value=date.today(), key="w_to_date")
 
-                w_notes = st.text_input("📝 ملاحظات / سبب الهدر (معايرة، كنترول، إعادة تحليل، إلخ - اختياري):", key="w_notes_input")
+                allowed_pct = st.number_input(
+                    "📏 الهدر المسموح به (%):",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=0.0,
+                    step=1.0,
+                    key="w_allowed_pct"
+                )
 
+            w_notes = st.text_input("📝 ملاحظات / سبب الهدر (معايرة، كنترول، إعادة تحليل، إلخ - اختياري):", key="w_notes_input")
+
+            # حساب الكمية المسحوبة/المصروفة خلال الفترة المحددة
             cons_query = supabase.table("consumption_logs").select("tests_consumed, cost_incurred").eq("item_id", w_item_id).gte("consumed_at", str(w_from)).lte("consumed_at", str(w_to) + "T23:59:59")
             if w_loc_id is not None:
                 cons_query = cons_query.eq("location_id", w_loc_id)
             cons_rows = cons_query.execute().data or []
             issued_qty = sum(float(c.get("tests_consumed") or 0) for c in cons_rows)
 
+            # حساب الهدر المسموح به والأساس الفعلي بعد خصمه
+            allowed_qty = issued_qty * (float(allowed_pct) / 100.0)
+            net_expected_qty = issued_qty - allowed_qty
+            wastage_qty = net_expected_qty - float(actual_tests)
+            wastage_pct = (wastage_qty / issued_qty * 100.0) if issued_qty > 0 else 0.0
+
             batches_rows = supabase.table("batches").select("unit_price_per_test").eq("item_id", w_item_id).execute().data or []
             avg_unit_price = (sum(float(b.get("unit_price_per_test") or 0) for b in batches_rows) / len(batches_rows)) if batches_rows else 0.0
-
-            wastage_qty = issued_qty - float(actual_tests)
-            wastage_pct = (wastage_qty / issued_qty * 100.0) if issued_qty > 0 else 0.0
             wastage_cost = max(0.0, wastage_qty) * avg_unit_price
 
             st.markdown("---")
@@ -1057,7 +1086,7 @@ elif selected_page == "📉 شاشة الهدر":
             with m1:
                 st.metric(f"📦 المسحوب/المصروف ({w_sub_u})", f"{issued_qty:,.0f}")
             with m2:
-                st.metric(f"🩺 الفعلي بالسيستم ({w_sub_u})", f"{actual_tests:,.0f}")
+                st.metric(f"✂️ بعد خصم المسموح ({allowed_pct:.0f}%)", f"{net_expected_qty:,.0f}")
             with m3:
                 st.metric(f"📉 كمية الهدر ({w_sub_u})", f"{wastage_qty:,.0f}")
             with m4:
@@ -1071,21 +1100,36 @@ elif selected_page == "📉 شاشة الهدر":
                 if w_from > w_to:
                     st.error("❌ تاريخ البداية يجب أن يكون قبل أو مساوياً لتاريخ النهاية.")
                 else:
-                    supabase.table("wastage_logs").insert({
-                        "item_id": w_item_id,
-                        "location_id": w_loc_id,
-                        "period_from": str(w_from),
-                        "period_to": str(w_to),
-                        "issued_qty": float(issued_qty),
-                        "actual_patient_tests": float(actual_tests),
-                        "wastage_qty": float(wastage_qty),
-                        "wastage_pct": float(round(wastage_pct, 2)),
-                        "wastage_cost": float(round(wastage_cost, 2)),
-                        "notes": w_notes.strip(),
-                        "created_by": int(user["id"])
-                    }).execute()
-                    st.success("✅ تم حفظ سجل الهدر بنجاح! يمكنك مراجعته في شاشة **📈 التقارير**.")
-                    st.rerun()
+                    # التحقق من عدم وجود سجل متشابه تماماً (الصنف + الوحدة/الفرع + التاريخ + الكمية المسحوبة)
+                    dup_q = supabase.table("wastage_logs").select("id").eq("item_id", w_item_id).eq("period_from", str(w_from)).eq("period_to", str(w_to)).eq("issued_qty", float(issued_qty))
+                    if w_loc_id is None:
+                        dup_q = dup_q.is_("location_id", "null")
+                    else:
+                        dup_q = dup_q.eq("location_id", w_loc_id)
+                    existing_dup = dup_q.limit(1).execute().data or []
+
+                    if existing_dup:
+                        st.error("❌ هذا الصنف مسجل قبل كده بنفس البيانات (الصنف، الوحدة/الفرع، الفترة الزمنية، والكمية المسحوبة).")
+                    else:
+                        payload_w = {
+                            "item_id": w_item_id,
+                            "location_id": w_loc_id,
+                            "period_from": str(w_from),
+                            "period_to": str(w_to),
+                            "issued_qty": float(issued_qty),
+                            "actual_patient_tests": float(actual_tests),
+                            "wastage_qty": float(wastage_qty),
+                            "wastage_pct": float(round(wastage_pct, 2)),
+                            "wastage_cost": float(round(wastage_cost, 2)),
+                            "notes": w_notes.strip(),
+                            "created_by": int(user["id"])
+                        }
+                        try:
+                            supabase.table("wastage_logs").insert({**payload_w, "allowed_wastage_pct": float(allowed_pct)}).execute()
+                        except Exception:
+                            supabase.table("wastage_logs").insert(payload_w).execute()
+                        st.success("✅ تم حفظ سجل الهدر بنجاح! يمكنك مراجعته في شاشة **📈 التقارير**.")
+                        st.rerun()
 
 # =========================================================================
 # 5. المخزن الرئيسي
@@ -1796,7 +1840,7 @@ elif selected_page == "✍️ الموافقات":
                 st.rerun()
 
 # =========================================================================
-# 12. التقارير (التقرير الكمي والمالي حسب الصنف + الاستهلاك + مقارنة الأسعار + الهدر)
+# 12. التقارير
 # =========================================================================
 elif selected_page == "📈 التقارير":
     render_page_header("📈 التقارير")
@@ -1808,7 +1852,6 @@ elif selected_page == "📈 التقارير":
         "📉 تقرير الهدر والفاقد"
     ])
 
-    # التبويب الأول: التقرير الكمي والمالي (حسب الصنف فقط بغض النظر عن الشركات) + فلتر التيستات/الأصناف
     with rep_t1:
         st.markdown("<h3 class='section-center-title'>💰 التقرير الكمي والمالي (إجمالي الكمية والتكلفة ومتوسط سعر الاختبار لكل صنف)</h3>", unsafe_allow_html=True)
         fc_d1, fc_d2, fc_d3 = st.columns(3)
@@ -1871,7 +1914,6 @@ elif selected_page == "📈 التقارير":
         else:
             st.info("لا توجد حركات مسجلة في هذه الفترة.")
 
-    # التبويب الثاني: تقرير الاستهلاك الكمي والمالي (حسب الصنف والشركة الموردة) + فلاتر الصنف والشركة
     with rep_t2:
         c1, c2 = st.columns(2)
         start_d = c1.date_input("من تاريخ", value=date.today().replace(day=1), key="cons_from_d")
@@ -1942,7 +1984,6 @@ elif selected_page == "📈 التقارير":
         else:
             st.info("لا توجد حركات استهلاك مسجلة في هذه الفترة.")
 
-    # التبويب الثالث: مقارنة أسعار الشركات الموردة
     with rep_t3:
         st.markdown("<h3 class='section-center-title'>تتبع ومقارنة أسعار التوريد عبر الزمن بين الشركات</h3>", unsafe_allow_html=True)
         batches_res = supabase.table("batches").select("*, items(name, variant), suppliers(name)").order("received_date").execute()
@@ -1982,7 +2023,6 @@ elif selected_page == "📈 التقارير":
         else:
             st.info("لم يتم تسجيل فواتير توريد بعد.")
 
-    # التبويب الرابع: تقرير الهدر والفاقد
     with rep_t4:
         st.markdown("<h3 class='section-center-title'>📉 تقرير الهدر والفاقد المسجل</h3>", unsafe_allow_html=True)
         try:
@@ -2021,6 +2061,7 @@ elif selected_page == "📈 التقارير":
                 w_qty = float(wr.get("wastage_qty") or 0)
                 w_pct = float(wr.get("wastage_pct") or 0)
                 w_cost = float(wr.get("wastage_cost") or 0)
+                allow_pct = float(wr.get("allowed_wastage_pct") or 0)
 
                 bg = "#fee2e2" if w_pct >= 15 else ("#fef9c3" if w_pct > 5 else "#ffffff")
                 w_rows_disp.append([
@@ -2028,6 +2069,7 @@ elif selected_page == "📈 التقارير":
                     (loc_n, "color:#0e4d92; font-weight:800;"),
                     f"{wr['period_from']} إلى {wr['period_to']}",
                     f"{float(wr.get('issued_qty') or 0):,.0f}",
+                    f"{allow_pct:.0f}%",
                     f"{float(wr.get('actual_patient_tests') or 0):,.0f}",
                     (f"{w_qty:,.0f}", "font-weight:800;"),
                     (f"{w_pct:.1f}%", "font-weight:800;"),
@@ -2041,6 +2083,7 @@ elif selected_page == "📈 التقارير":
                     "من تاريخ": wr["period_from"],
                     "إلى تاريخ": wr["period_to"],
                     "المسحوب": float(wr.get("issued_qty") or 0),
+                    "المسموح %": allow_pct,
                     "الفعلي بالسيستم": float(wr.get("actual_patient_tests") or 0),
                     "كمية الهدر": w_qty,
                     "نسبة الهدر %": w_pct,
@@ -2050,7 +2093,7 @@ elif selected_page == "📈 التقارير":
 
             if w_rows_disp:
                 render_styled_table(
-                    ["الصنف", "الوحدة / الفرع", "الفترة", "المسحوب", "الفعلي بالسيستم", "كمية الهدر", "نسبة الهدر", "تكلفة الهدر", "ملاحظات"],
+                    ["الصنف", "الوحدة / الفرع", "الفترة", "المسحوب", "المسموح %", "الفعلي بالسيستم", "كمية الهدر", "نسبة الهدر", "تكلفة الهدر", "ملاحظات"],
                     w_rows_disp,
                     row_bg_colors=w_colors_disp
                 )
