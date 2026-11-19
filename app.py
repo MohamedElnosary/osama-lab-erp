@@ -10,7 +10,7 @@ from datetime import datetime, date, timedelta
 # إعدادات الصفحة والتنسيق العام (واجهة عربية احترافية)
 # =========================================================================
 st.set_page_config(
-    page_title="معمل د. أسامة عبدالمتعال",
+    page_title="معامل د. أسامة عبدالمتعال",
     page_icon="🧬",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -78,7 +78,6 @@ st.markdown("""
         color: #1e293b !important;
         line-height: 1.4 !important;
     }
-    /* تمييز الصفحة المختارة حالياً باللون الأزرق الملكي */
     [data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
         background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%) !important;
         border-color: #0e4d92 !important;
@@ -87,11 +86,9 @@ st.markdown("""
     [data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) p {
         color: #ffffff !important;
     }
-    /* إخفاء دائرة الراديو التقليدية الصغيرة */
     [data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {
         display: none !important;
     }
-    /* زر تسجيل الخروج في القائمة الجانبية */
     [data-testid="stSidebar"] button {
         background-color: #fee2e2 !important;
         color: #b91c1c !important;
@@ -127,7 +124,7 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 # =========================================================================
-# نظام تسجيل الدخول (تصميم عصري ملون وممركز)
+# نظام تسجيل الدخول (تصميم عصري جذاب ومضغوط في المنتصف)
 # =========================================================================
 if "user" not in st.session_state:
     st.session_state.user = None
@@ -136,61 +133,103 @@ if st.session_state.user is None:
     st.markdown("""
     <style>
         .stApp {
-            background: linear-gradient(135deg, #e0f2fe 0%, #f8fafc 50%, #ede9fe 100%);
+            background: radial-gradient(circle at top right, #bae6fd 0%, #f0f9ff 45%, #e0e7ff 100%);
         }
+        /* تصغير عرض الصندوق وتوسيطه في منتصف الشاشة */
         [data-testid="stForm"] {
-            background-color: #ffffff;
-            border: 2px solid #38bdf8;
-            border-radius: 20px;
-            padding: 35px 30px;
-            box-shadow: 0 12px 30px rgba(14, 77, 146, 0.12);
+            max-width: 410px !important;
+            margin: 0 auto !important;
+            background: rgba(255, 255, 255, 0.96) !important;
+            border: 1.5px solid #bae6fd !important;
+            border-top: 6px solid #0e4d92 !important;
+            border-radius: 24px !important;
+            padding: 32px 28px !important;
+            box-shadow: 0 20px 40px rgba(14, 77, 146, 0.14) !important;
         }
-        [data-testid="stForm"] label p {
+        /* توسيط عنواني اسم المستخدم وكلمة المرور داخل الصندوق */
+        [data-testid="stForm"] [data-testid="stWidgetLabel"] {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            width: 100% !important;
+            text-align: center !important;
+        }
+        [data-testid="stForm"] [data-testid="stWidgetLabel"] p {
             text-align: center !important;
             width: 100% !important;
-            font-size: 20px !important;
-            font-weight: 700 !important;
+            font-size: 19px !important;
+            font-weight: 800 !important;
             color: #0e4d92 !important;
             margin-bottom: 6px !important;
         }
-        [data-testid="stForm"] input {
-            text-align: center !important;
-            font-size: 19px !important;
-            font-weight: 600 !important;
+        /* تنسيق خانات الإدخال */
+        [data-testid="stForm"] [data-baseweb="input"] {
             background-color: #f0f9ff !important;
             border: 1.5px solid #7dd3fc !important;
-            border-radius: 12px !important;
+            border-radius: 14px !important;
+            transition: all 0.2s ease !important;
+        }
+        [data-testid="stForm"] [data-baseweb="input"]:focus-within {
+            border-color: #0284c7 !important;
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2) !important;
+            background-color: #ffffff !important;
+        }
+        [data-testid="stForm"] input {
+            text-align: center !important;
+            font-size: 18px !important;
+            font-weight: 700 !important;
             padding: 10px !important;
             color: #0f172a !important;
         }
+        /* إخفاء نص Press Enter to submit form */
+        [data-testid="stForm"] [data-testid="InputInstructions"] {
+            display: none !important;
+        }
+        /* زر تسجيل الدخول المتدرج */
+        [data-testid="stForm"] button[kind="secondaryFormSubmit"],
         [data-testid="stForm"] button {
-            background: linear-gradient(90deg, #0284c7 0%, #0e4d92 100%) !important;
+            background: linear-gradient(135deg, #0e4d92 0%, #0284c7 50%, #06b6d4 100%) !important;
             color: #ffffff !important;
             font-size: 20px !important;
-            font-weight: 700 !important;
-            border-radius: 12px !important;
-            padding: 10px 0 !important;
+            font-weight: 800 !important;
+            border-radius: 14px !important;
+            padding: 11px 0 !important;
             border: none !important;
-            margin-top: 10px !important;
+            margin-top: 12px !important;
+            box-shadow: 0 8px 20px rgba(2, 132, 199, 0.3) !important;
+            transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+        }
+        [data-testid="stForm"] button:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 12px 24px rgba(14, 77, 146, 0.38) !important;
         }
     </style>
     """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1.3, 1.4, 1.3])
-    with col2:
-        st.markdown("<h1 style='text-align: center; color: #0e4d92; font-size: 36px; margin-bottom: 20px;'>🧬 معمل د. أسامة عبدالمتعال</h1>", unsafe_allow_html=True)
-        with st.form("login_form"):
-            username = st.text_input("اسم المستخدم")
-            password = st.text_input("كلمة المرور", type="password")
-            submit = st.form_submit_button("تسجيل الدخول", use_container_width=True)
-            if submit:
-                res = supabase.table("users").select("*, locations(name, location_type)").eq("username", username.strip()).eq("is_active", True).execute()
-                if res.data and res.data[0]["password_hash"] == hash_password(password):
-                    st.session_state.user = res.data[0]
-                    st.rerun()
-                else:
-                    st.error("❌ اسم المستخدم أو كلمة المرور غير صحيحة، أو الحساب موقوف.")
+    st.markdown("""
+        <h1 style='text-align: center;
+                   background: linear-gradient(90deg, #0e4d92, #0284c7);
+                   -webkit-background-clip: text;
+                   -webkit-text-fill-color: transparent;
+                   font-size: 38px;
+                   font-weight: 800;
+                   margin-bottom: 18px;'>
+            🧬 معامل د. أسامة عبدالمتعال
+        </h1>
+    """, unsafe_allow_html=True)
+
+    with st.form("login_form"):
+        username = st.text_input("اسم المستخدم")
+        password = st.text_input("كلمة المرور", type="password")
+        submit = st.form_submit_button("تسجيل الدخول", use_container_width=True)
+        if submit:
+            res = supabase.table("users").select("*, locations(name, location_type)").eq("username", username.strip()).eq("is_active", True).execute()
+            if res.data and res.data[0]["password_hash"] == hash_password(password):
+                st.session_state.user = res.data[0]
+                st.rerun()
+            else:
+                st.error("❌ اسم المستخدم أو كلمة المرور غير صحيحة، أو الحساب موقوف.")
     st.stop()
 
 user = st.session_state.user
@@ -209,7 +248,7 @@ ROLE_LABELS = {
 }
 
 with st.sidebar:
-    st.markdown("<h2 style='text-align: center; color: #0e4d92; font-weight: 800; margin-bottom: 12px;'>🧬 معمل د. أسامة عبدالمتعال</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #0e4d92; font-weight: 800; margin-bottom: 12px;'>🧬 معامل د. أسامة عبدالمتعال</h2>", unsafe_allow_html=True)
     st.markdown(f"""
     <div style='background: linear-gradient(135deg, #0e4d92 0%, #0284c7 100%);
                 color: white;
@@ -264,13 +303,11 @@ if selected_page == "📊 لوحة القيادة والذكاء الاصطنا�
     
     total_stock_value = sum(r["tests_available"] * r["batches"]["unit_price_per_test"] for r in inv_data if r.get("batches"))
     
-    # استهلاك آخر 30 يوم
     thirty_days_ago = (datetime.now() - timedelta(days=30)).isoformat()
     recent_cons = [c for c in cons_data if c["consumed_at"] >= thirty_days_ago]
     monthly_cost = sum(c["cost_incurred"] for c in recent_cons)
     monthly_tests = sum(c["tests_consumed"] for c in recent_cons)
     
-    # تنبيهات الصلاحية (أقل من 60 يوم)
     expiring_soon = []
     today = date.today()
     for r in inv_data:
