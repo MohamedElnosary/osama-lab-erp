@@ -368,7 +368,7 @@ def df_to_styled_table(df: pd.DataFrame):
     render_styled_table(headers, rows_data)
 
 # =========================================================================
-# دالة توليد ملف PDF للطلبية
+# دالة توليد ملف PDF عام للتقارير والطلبيات
 # =========================================================================
 @st.cache_resource
 def get_arabic_font_path():
@@ -390,8 +390,8 @@ def ar_text(text: str) -> str:
             return str(text)
     return str(text)
 
-def generate_order_pdf(df_ord: pd.DataFrame, loc_label: str, months_cover: int) -> bytes:
-    if not PDF_AVAILABLE:
+def generate_pdf_report(df_rep: pd.DataFrame, report_title: str, subtitle_info: str = "") -> bytes:
+    if not PDF_AVAILABLE or df_rep is None or df_rep.empty:
         return b""
     font_path = get_arabic_font_path()
     pdf = FPDF(orientation="L", unit="mm", format="A4")
@@ -406,43 +406,71 @@ def generate_order_pdf(df_ord: pd.DataFrame, loc_label: str, months_cover: int) 
         pdf.set_font("Helvetica", size=14)
 
     pdf.set_text_color(14, 77, 146)
-    title_str = "معامل أ.د/ أسامة عبدالمتعال - طلبية شراء واحتياجات" if use_ar_font else "Purchase Order - Lab ERP"
-    pdf.cell(0, 11, ar_text(title_str) if use_ar_font else title_str, ln=True, align="C")
+    header_line = f"معامل أ.د/ أسامة عبدالمتعال - {report_title}" if use_ar_font else f"Lab ERP - {report_title}"
+    pdf.cell(0, 11, ar_text(header_line) if use_ar_font else header_line, ln=True, align="C")
     
     if use_ar_font:
         pdf.set_font("Amiri", size=11)
     else:
         pdf.set_font("Helvetica", size=10)
     pdf.set_text_color(51, 65, 85)
-    sub_info = f"الجهة: {loc_label}  |  مدة التغطية: {months_cover} شهور  |  التاريخ: {date.today()}" if use_ar_font else f"Location: {loc_label} | Period: {months_cover} Months | Date: {date.today()}"
-    pdf.cell(0, 8, ar_text(sub_info) if use_ar_font else sub_info, ln=True, align="C")
+    sub_line = subtitle_info if subtitle_info else f"تاريخ الطباعة: {date.today()}"
+    pdf.cell(0, 8, ar_text(sub_line) if use_ar_font else sub_line, ln=True, align="C")
     pdf.ln(4)
 
-    cols = list(df_ord.columns)[::-1]
-    col_widths = [28, 35, 38, 35, 32, 35, 65][:len(cols)]
-    if len(col_widths) < len(cols):
-        col_widths = [270 / len(cols)] * len(cols)
+    cols = list(df_rep.columns)[::-1]
+    col_w = 270.0 / max(len(cols), 1)
 
     pdf.set_fill_color(14, 77, 146)
     pdf.set_text_color(255, 255, 255)
-    for idx, col_name in enumerate(cols):
+    for col_name in cols:
         c_lbl = ar_text(col_name) if use_ar_font else str(col_name)
-        pdf.cell(col_widths[idx], 10, c_lbl, border=1, align="C", fill=True)
+        pdf.cell(col_w, 10, c_lbl, border=1, align="C", fill=True)
     pdf.ln()
 
     pdf.set_text_color(15, 23, 42)
-    for row_idx, row in df_ord.iterrows():
+    for row_idx, row in df_rep.iterrows():
         fill_row = (row_idx % 2 == 1)
         pdf.set_fill_color(241, 245, 249) if fill_row else pdf.set_fill_color(255, 255, 255)
-        for idx, col_name in enumerate(cols):
+        for col_name in cols:
             val = row[col_name]
-            val_str = f"{val:,.0f}" if isinstance(val, (int, float)) else str(val)
+            val_str = f"{val:,.2f}" if isinstance(val, float) else (f"{val:,}" if isinstance(val, int) else str(val))
             cell_lbl = ar_text(val_str) if use_ar_font else val_str
-            pdf.cell(col_widths[idx], 10, cell_lbl, border=1, align="C", fill=True)
+            pdf.cell(col_w, 10, cell_lbl, border=1, align="C", fill=True)
         pdf.ln()
 
     out = pdf.output()
     return bytes(out) if isinstance(out, (bytes, bytearray)) else str(out).encode("latin1", errors="ignore")
+
+def render_export_buttons(df_export: pd.DataFrame, base_filename: str, report_title: str, subtitle_info: str = "", key_prefix: str = "exp"):
+    """عرض زري تحميل Excel و PDF متجاورين أسفل أي تقرير"""
+    if df_export is None or df_export.empty:
+        return
+    st.markdown("<br>", unsafe_allow_html=True)
+    csv_bytes = df_export.to_csv(index=False).encode("utf-8-sig")
+    pdf_bytes = generate_pdf_report(df_export, report_title, subtitle_info)
+
+    c_ex, c_pdf = st.columns(2)
+    with c_ex:
+        st.download_button(
+            "📥 تحميل التقرير (Excel / CSV)",
+            data=csv_bytes,
+            file_name=f"{base_filename}.csv",
+            mime="text/csv",
+            type="primary",
+            use_container_width=True,
+            key=f"{key_prefix}_csv"
+        )
+    with c_pdf:
+        st.download_button(
+            "📄 تحميل التقرير (PDF)",
+            data=pdf_bytes,
+            file_name=f"{base_filename}.pdf",
+            mime="application/pdf",
+            type="secondary",
+            use_container_width=True,
+            key=f"{key_prefix}_pdf"
+        )
 
 # =========================================================================
 # الاتصال بقاعدة البيانات السحابية Supabase
@@ -693,23 +721,6 @@ if selected_page == "📊 الرئيسية":
     ]
     monthly_cost = sum(c["cost_incurred"] for c in recent_cons)
     monthly_tests = sum(c["tests_consumed"] for c in recent_cons)
-    
-    expiring_soon = []
-    today = date.today()
-    for r in filtered_inv:
-        if r["tests_available"] > 0 and r.get("batches"):
-            exp_d = datetime.strptime(r["batches"]["expiry_date"], "%Y-%m-%d").date()
-            days_left = (exp_d - today).days
-            if days_left <= 90:
-                expiring_soon.append({
-                    "الصنف": r['batches']['items']['name'],
-                    "الشركة": r["batches"]["suppliers"]["name"],
-                    "المخزن": r["locations"]["name"],
-                    "رقم التشغيلة": r["batches"]["lot_number"],
-                    "تاريخ الصلاحية": r["batches"]["expiry_date"],
-                    "الأيام المتبقية": days_left,
-                    "الرصيد (اختبار/قطعة)": r["tests_available"]
-                })
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
@@ -719,8 +730,7 @@ if selected_page == "📊 الرئيسية":
     with c3:
         st.markdown(f'<div class="kpi-card" style="border-top: 5px solid #0d9488;"><div class="kpi-title">🧪 إجمالي السحب ({period_days} يوم)</div><div class="kpi-value" style="color: #0d9488;">{monthly_tests:,.0f} اختبار/قطعة</div></div>', unsafe_allow_html=True)
     with c4:
-        alert_color = "#dc2626" if len(expiring_soon) > 0 else "#16a34a"
-        st.markdown(f'<div class="kpi-card" style="border-top: 5px solid {alert_color};"><div class="kpi-title">⚠️ تشغيلات قريبة الانتهاء (≤90 يوم)</div><div class="kpi-value" style="color: {alert_color};">{len(expiring_soon)} تشغيلة</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card" style="border-top: 5px solid #6366f1;"><div class="kpi-title">📦 عدد الأصناف النشطة</div><div class="kpi-value" style="color: #6366f1;">{len({r["batches"]["items"]["name"] for r in filtered_inv if r.get("batches") and r["batches"].get("items")})} صنف</div></div>', unsafe_allow_html=True)
 
     st.divider()
     col_a, col_b = st.columns(2)
@@ -986,7 +996,7 @@ elif selected_page == "🔮 التنبؤ بكفاية المخزون الرئي�
         st.info("لا توجد بيانات مطابقة للفلاتر المختارة حالياً.")
 
 # =========================================================================
-# 4. شاشة مستقلة جديدة: شاشة الهدر (مقارنة المسحوب/المصروف بالنتائج الفعلية)
+# 4. شاشة مستقلة جديدة: شاشة الهدر
 # =========================================================================
 elif selected_page == "📉 شاشة الهدر":
     render_page_header("📉 شاشة الهدر")
@@ -1029,14 +1039,12 @@ elif selected_page == "📉 شاشة الهدر":
 
                 w_notes = st.text_input("📝 ملاحظات / سبب الهدر (معايرة، كنترول، إعادة تحليل، إلخ - اختياري):", key="w_notes_input")
 
-            # حساب الكمية المسحوبة/المصروفة خلال الفترة المحددة
             cons_query = supabase.table("consumption_logs").select("tests_consumed, cost_incurred").eq("item_id", w_item_id).gte("consumed_at", str(w_from)).lte("consumed_at", str(w_to) + "T23:59:59")
             if w_loc_id is not None:
                 cons_query = cons_query.eq("location_id", w_loc_id)
             cons_rows = cons_query.execute().data or []
             issued_qty = sum(float(c.get("tests_consumed") or 0) for c in cons_rows)
 
-            # حساب متوسط سعر الاختبار من الفواتير المسجلة للصنف
             batches_rows = supabase.table("batches").select("unit_price_per_test").eq("item_id", w_item_id).execute().data or []
             avg_unit_price = (sum(float(b.get("unit_price_per_test") or 0) for b in batches_rows) / len(batches_rows)) if batches_rows else 0.0
 
@@ -1270,31 +1278,15 @@ elif selected_page == "🛒 الطلبيات":
             ])
         render_styled_table(ord_headers, styled_ord_rows)
 
-        st.markdown("<br>", unsafe_allow_html=True)
         df_ord = pd.DataFrame(order_rows)
         file_tag = "all_lab" if sel_order_loc == "الكل (إجمالي المعمل)" else sel_order_loc
-        csv_data = df_ord.to_csv(index=False).encode("utf-8-sig")
-        pdf_data = generate_order_pdf(df_ord, sel_order_loc, months_cover)
-
-        dl_col1, dl_col2 = st.columns(2)
-        with dl_col1:
-            st.download_button(
-                "📥 تحميل الطلبية (Excel / CSV)",
-                data=csv_data,
-                file_name=f"order_{file_tag}_{months_cover}_months.csv",
-                mime="text/csv",
-                type="primary",
-                use_container_width=True
-            )
-        with dl_col2:
-            st.download_button(
-                "📄 تحميل الطلبية (PDF)",
-                data=pdf_data,
-                file_name=f"order_{file_tag}_{months_cover}_months.pdf",
-                mime="application/pdf",
-                type="secondary",
-                use_container_width=True
-            )
+        render_export_buttons(
+            df_ord,
+            f"order_{file_tag}_{months_cover}_months",
+            "طلبية شراء واحتياجات",
+            f"الجهة: {sel_order_loc} | المدة: {months_cover} شهور | التاريخ: {date.today()}",
+            key_prefix="ord_dl"
+        )
     else:
         st.success("✅ لا يوجد عجز مطلوب شراؤه بناءً على الفلاتر والمدة المحددة!")
 
@@ -1804,25 +1796,98 @@ elif selected_page == "✍️ الموافقات":
                 st.rerun()
 
 # =========================================================================
-# 12. التقارير (يشمل تقرير الاستهلاك + مقارنة الأسعار + تقرير الهدر والفاقد)
+# 12. التقارير (التقرير الكمي والمالي حسب الصنف + الاستهلاك + مقارنة الأسعار + الهدر)
 # =========================================================================
 elif selected_page == "📈 التقارير":
     render_page_header("📈 التقارير")
     
-    rep_t1, rep_t2, rep_t3 = st.tabs([
-        "📊 تقرير الاستهلاك الكمي والمالي",
+    rep_t1, rep_t2, rep_t3, rep_t4 = st.tabs([
+        "💰 التقرير الكمي والمالي (حسب الصنف)",
+        "📊 تقرير الاستهلاك الكمي والمالي (بالصنف والشركة)",
         "💲 مقارنة وتطور أسعار الشركات الموردة",
         "📉 تقرير الهدر والفاقد"
     ])
-    
+
+    # التبويب الأول: التقرير الكمي والمالي (حسب الصنف فقط بغض النظر عن الشركات) + فلتر التيستات/الأصناف
     with rep_t1:
+        st.markdown("<h3 class='section-center-title'>💰 التقرير الكمي والمالي (إجمالي الكمية والتكلفة ومتوسط سعر الاختبار لكل صنف)</h3>", unsafe_allow_html=True)
+        fc_d1, fc_d2, fc_d3 = st.columns(3)
+        start_fin = fc_d1.date_input("من تاريخ", value=date.today().replace(day=1), key="fin_from_d")
+        end_fin = fc_d2.date_input("إلى تاريخ", value=date.today(), key="fin_to_d")
+
+        fin_logs = supabase.table("consumption_logs").select("*, items(id, name, sub_unit_name)").gte("consumed_at", str(start_fin)).lte("consumed_at", str(end_fin) + "T23:59:59").execute().data or []
+        all_fin_items = ["الكل"] + sorted(list({l["items"]["name"] for l in fin_logs if l.get("items")}))
+        with fc_d3:
+            sel_fin_test = st.selectbox("🧪 فلترة بناءً على التيست / الصنف:", all_fin_items, key="fin_test_filter")
+
+        if fin_logs:
+            df_fin_raw = pd.DataFrame([{
+                "الصنف": l["items"]["name"],
+                "الكمية": float(l["tests_consumed"] or 0),
+                "التكلفة": float(l["cost_incurred"] or 0)
+            } for l in fin_logs if l.get("items")])
+
+            if sel_fin_test != "الكل":
+                df_fin_raw = df_fin_raw[df_fin_raw["الصنف"] == sel_fin_test]
+
+            if not df_fin_raw.empty:
+                fin_grp = df_fin_raw.groupby("الصنف", as_index=False).agg(
+                    إجمالي_الكمية=("الكمية", "sum"),
+                    إجمالي_التكلفة_جنيه=("التكلفة", "sum")
+                )
+                fin_grp["متوسط_سعر_الاختبار"] = fin_grp.apply(
+                    lambda x: round(x["إجمالي_التكلفة_جنيه"] / x["إجمالي_الكمية"], 2) if x["إجمالي_الكمية"] > 0 else 0.0,
+                    axis=1
+                )
+
+                fin_tbl_rows = []
+                for _, fr in fin_grp.iterrows():
+                    fin_tbl_rows.append([
+                        (fr["الصنف"], "color:#0e4d92; font-weight:800;"),
+                        (f"{fr['إجمالي_الكمية']:,.0f}", "color:#0284c7; font-weight:800;"),
+                        (f"{fr['إجمالي_التكلفة_جنيه']:,.2f} ج.م", "color:#0d9488; font-weight:800;"),
+                        (f"{fr['متوسط_سعر_الاختبار']:,.2f} ج.م", "font-weight:800;")
+                    ])
+                render_styled_table(
+                    ["الصنف / التيست", "إجمالي الكمية", "إجمالي التكلفة", "متوسط سعر الاختبار"],
+                    fin_tbl_rows
+                )
+
+                df_fin_export = fin_grp.rename(columns={
+                    "الصنف": "الصنف / التيست",
+                    "إجمالي_الكمية": "إجمالي الكمية",
+                    "إجمالي_التكلفة_جنيه": "إجمالي التكلفة (ج.م)",
+                    "متوسط_سعر_الاختبار": "متوسط سعر الاختبار (ج.م)"
+                })
+                render_export_buttons(
+                    df_fin_export,
+                    f"financial_by_item_{start_fin}_{end_fin}",
+                    "التقرير الكمي والمالي حسب الصنف",
+                    f"الفترة: {start_fin} إلى {end_fin} | الصنف: {sel_fin_test}",
+                    key_prefix="fin_item_exp"
+                )
+            else:
+                st.info("لا توجد بيانات مطابقة لفلتر الصنف المحدد.")
+        else:
+            st.info("لا توجد حركات مسجلة في هذه الفترة.")
+
+    # التبويب الثاني: تقرير الاستهلاك الكمي والمالي (حسب الصنف والشركة الموردة) + فلاتر الصنف والشركة
+    with rep_t2:
         c1, c2 = st.columns(2)
-        start_d = c1.date_input("من تاريخ", value=date.today().replace(day=1))
-        end_d = c2.date_input("إلى تاريخ", value=date.today())
+        start_d = c1.date_input("من تاريخ", value=date.today().replace(day=1), key="cons_from_d")
+        end_d = c2.date_input("إلى تاريخ", value=date.today(), key="cons_to_d")
         
         logs = supabase.table("consumption_logs").select("*, items(name, variant, sub_unit_name), suppliers(name), locations(name)").gte("consumed_at", str(start_d)).lte("consumed_at", str(end_d) + "T23:59:59").execute()
         
         if logs.data:
+            cf1, cf2 = st.columns(2)
+            cons_items_opts = ["الكل"] + sorted(list({l["items"]["name"] for l in logs.data if l.get("items")}))
+            cons_sups_opts = ["الكل"] + sorted(list({l["suppliers"]["name"] for l in logs.data if l.get("suppliers")}))
+            with cf1:
+                sel_cons_item = st.selectbox("🧪 فلترة حسب الصنف:", cons_items_opts, key="cons_item_filter")
+            with cf2:
+                sel_cons_sup = st.selectbox("🏭 فلترة حسب الشركة الموردة:", cons_sups_opts, key="cons_sup_filter")
+
             df_l = pd.DataFrame([{
                 "التاريخ": l["consumed_at"][:10],
                 "الوحدة/الفرع": l["locations"]["name"],
@@ -1831,34 +1896,54 @@ elif selected_page == "📈 التقارير":
                 "الكمية المستهلكة": float(l["tests_consumed"]),
                 "التكلفة الإجمالية (ج.م)": float(l["cost_incurred"])
             } for l in logs.data])
-            
-            st.markdown("<h3 class='section-center-title'>ملخص الاستهلاك مقسماً بالصنف والشركة الموردة</h3>", unsafe_allow_html=True)
-            summary = df_l.groupby(["الصنف", "الشركة الموردة"]).agg(
-                إجمالي_الكمية=("الكمية المستهلكة", "sum"),
-                إجمالي_التكلفة_جنيه=("التكلفة الإجمالية (ج.م)", "sum")
-            ).reset_index()
-            summary["متوسط_سعر_الاختبار"] = (summary["إجمالي_التكلفة_جنيه"] / summary["إجمالي_الكمية"]).round(2)
-            
-            sum_rows = []
-            for _, sr in summary.iterrows():
-                sum_rows.append([
-                    (sr["الصنف"], "color:#0e4d92; font-weight:800;"),
-                    sr["الشركة الموردة"],
-                    (f"{sr['إجمالي_الكمية']:,.0f}", "color:#0284c7; font-weight:800;"),
-                    (f"{sr['إجمالي_التكلفة_جنيه']:,.2f} ج.م", "color:#0d9488; font-weight:800;"),
-                    f"{sr['متوسط_سعر_الاختبار']:,.2f} ج.م"
-                ])
-            render_styled_table(
-                ["الصنف", "الشركة الموردة", "إجمالي الكمية", "إجمالي التكلفة", "متوسط سعر الاختبار"],
-                sum_rows
-            )
-            
-            with st.expander("عرض السجل التفصيلي لكل حركة سحب"):
-                df_to_styled_table(df_l)
+
+            if sel_cons_item != "الكل":
+                df_l = df_l[df_l["الصنف"] == sel_cons_item]
+            if sel_cons_sup != "الكل":
+                df_l = df_l[df_l["الشركة الموردة"] == sel_cons_sup]
+
+            if not df_l.empty:
+                st.markdown("<h3 class='section-center-title'>ملخص الاستهلاك مقسماً بالصنف والشركة الموردة</h3>", unsafe_allow_html=True)
+                summary = df_l.groupby(["الصنف", "الشركة الموردة"], as_index=False).agg(
+                    إجمالي_الكمية=("الكمية المستهلكة", "sum"),
+                    إجمالي_التكلفة_جنيه=("التكلفة الإجمالية (ج.م)", "sum")
+                )
+                summary["متوسط_سعر_الاختبار"] = summary.apply(
+                    lambda x: round(x["إجمالي_التكلفة_جنيه"] / x["إجمالي_الكمية"], 2) if x["إجمالي_الكمية"] > 0 else 0.0,
+                    axis=1
+                )
+                
+                sum_rows = []
+                for _, sr in summary.iterrows():
+                    sum_rows.append([
+                        (sr["الصنف"], "color:#0e4d92; font-weight:800;"),
+                        sr["الشركة الموردة"],
+                        (f"{sr['إجمالي_الكمية']:,.0f}", "color:#0284c7; font-weight:800;"),
+                        (f"{sr['إجمالي_التكلفة_جنيه']:,.2f} ج.م", "color:#0d9488; font-weight:800;"),
+                        f"{sr['متوسط_سعر_الاختبار']:,.2f} ج.م"
+                    ])
+                render_styled_table(
+                    ["الصنف", "الشركة الموردة", "إجمالي الكمية", "إجمالي التكلفة", "متوسط سعر الاختبار"],
+                    sum_rows
+                )
+
+                render_export_buttons(
+                    summary,
+                    f"consumption_item_supplier_{start_d}_{end_d}",
+                    "تقرير الاستهلاك الكمي والمالي بالصنف والشركة",
+                    f"الفترة: {start_d} إلى {end_d} | الصنف: {sel_cons_item} | الشركة: {sel_cons_sup}",
+                    key_prefix="cons_sum_exp"
+                )
+                
+                with st.expander("عرض السجل التفصيلي لكل حركة سحب"):
+                    df_to_styled_table(df_l)
+            else:
+                st.info("لا توجد حركات مطابقة للفلاتر المختارة.")
         else:
             st.info("لا توجد حركات استهلاك مسجلة في هذه الفترة.")
 
-    with rep_t2:
+    # التبويب الثالث: مقارنة أسعار الشركات الموردة
+    with rep_t3:
         st.markdown("<h3 class='section-center-title'>تتبع ومقارنة أسعار التوريد عبر الزمن بين الشركات</h3>", unsafe_allow_html=True)
         batches_res = supabase.table("batches").select("*, items(name, variant), suppliers(name)").order("received_date").execute()
         if batches_res.data:
@@ -1871,17 +1956,34 @@ elif selected_page == "📈 التقارير":
                 "سعر العلبة (ج.م)": float(b["kit_price"])
             } for b in batches_res.data])
             
-            sel_p_item = st.selectbox("اختر الصنف لمقارنة أسعار شركاته:", sorted(df_b["الصنف"].unique().tolist()))
+            pf1, pf2 = st.columns(2)
+            with pf1:
+                sel_p_item = st.selectbox("🧪 اختر الصنف لمقارنة أسعار شركاته:", sorted(df_b["الصنف"].unique().tolist()), key="price_item_sel")
+            with pf2:
+                price_sups = ["الكل"] + sorted(df_b[df_b["الصنف"] == sel_p_item]["الشركة الموردة"].unique().tolist())
+                sel_p_sup = st.selectbox("🏭 فلترة حسب الشركة الموردة:", price_sups, key="price_sup_sel")
+
             sub_b = df_b[df_b["الصنف"] == sel_p_item]
+            if sel_p_sup != "الكل":
+                sub_b = sub_b[sub_b["الشركة الموردة"] == sel_p_sup]
             
             fig_p = px.line(sub_b, x="تاريخ التوريد", y="سعر الاختبار/القطعة (ج.م)", color="الشركة الموردة", markers=True, title=f"تطور ومقارنة سعر ({sel_p_item}) بين الشركات")
             fig_p.update_layout(font_family="Cairo", title_x=0.5, paper_bgcolor="white", plot_bgcolor="#f8fafc")
             st.plotly_chart(fig_p, use_container_width=True)
             df_to_styled_table(sub_b)
+
+            render_export_buttons(
+                sub_b,
+                f"price_comparison_{sel_p_item}",
+                f"مقارنة وتطور أسعار {sel_p_item}",
+                f"الصنف: {sel_p_item} | الشركة: {sel_p_sup}",
+                key_prefix="price_exp"
+            )
         else:
             st.info("لم يتم تسجيل فواتير توريد بعد.")
 
-    with rep_t3:
+    # التبويب الرابع: تقرير الهدر والفاقد
+    with rep_t4:
         st.markdown("<h3 class='section-center-title'>📉 تقرير الهدر والفاقد المسجل</h3>", unsafe_allow_html=True)
         try:
             w_res = supabase.table("wastage_logs").select("*, items(name, sub_unit_name), locations(name)").order("id", desc=True).execute()
@@ -1892,16 +1994,30 @@ elif selected_page == "📈 التقارير":
         if not w_data:
             st.info("لا توجد سجلات هدر محفوظة بعد. يمكنك تسجيلها من شاشة **📉 شاشة الهدر**.")
         else:
-            w_items_opts = ["الكل"] + sorted(list({r["items"]["name"] for r in w_data if r.get("items")}))
-            sel_w_rep_item = st.selectbox("فلترة حسب الصنف:", w_items_opts, key="w_rep_item_sel")
+            wf1, wf2 = st.columns(2)
+            with wf1:
+                w_locs_opts = ["الكل"] + sorted(list({
+                    (r["locations"]["name"] if r.get("locations") and r["locations"].get("name") else "الكل (إجمالي المعمل)")
+                    for r in w_data
+                }))
+                sel_w_rep_loc = st.selectbox("🏥 فلترة حسب الوحدة / الفرع:", w_locs_opts, key="w_rep_loc_sel")
+            with wf2:
+                w_items_opts = ["الكل"] + sorted(list({r["items"]["name"] for r in w_data if r.get("items")}))
+                sel_w_rep_item = st.selectbox("🧪 فلترة حسب الصنف:", w_items_opts, key="w_rep_item_sel")
 
             w_rows_disp = []
             w_colors_disp = []
+            w_export_list = []
+
             for wr in w_data:
                 it_n = wr["items"]["name"] if wr.get("items") else "-"
+                loc_n = wr["locations"]["name"] if wr.get("locations") and wr["locations"].get("name") else "الكل (إجمالي المعمل)"
+
+                if sel_w_rep_loc != "الكل" and loc_n != sel_w_rep_loc:
+                    continue
                 if sel_w_rep_item != "الكل" and it_n != sel_w_rep_item:
                     continue
-                loc_n = wr["locations"]["name"] if wr.get("locations") else "الكل (إجمالي المعمل)"
+
                 w_qty = float(wr.get("wastage_qty") or 0)
                 w_pct = float(wr.get("wastage_pct") or 0)
                 w_cost = float(wr.get("wastage_cost") or 0)
@@ -1909,7 +2025,7 @@ elif selected_page == "📈 التقارير":
                 bg = "#fee2e2" if w_pct >= 15 else ("#fef9c3" if w_pct > 5 else "#ffffff")
                 w_rows_disp.append([
                     (it_n, "font-weight:800;"),
-                    loc_n,
+                    (loc_n, "color:#0e4d92; font-weight:800;"),
                     f"{wr['period_from']} إلى {wr['period_to']}",
                     f"{float(wr.get('issued_qty') or 0):,.0f}",
                     f"{float(wr.get('actual_patient_tests') or 0):,.0f}",
@@ -1919,6 +2035,18 @@ elif selected_page == "📈 التقارير":
                     wr.get("notes") or "-"
                 ])
                 w_colors_disp.append(bg)
+                w_export_list.append({
+                    "الصنف": it_n,
+                    "الوحدة / الفرع": loc_n,
+                    "من تاريخ": wr["period_from"],
+                    "إلى تاريخ": wr["period_to"],
+                    "المسحوب": float(wr.get("issued_qty") or 0),
+                    "الفعلي بالسيستم": float(wr.get("actual_patient_tests") or 0),
+                    "كمية الهدر": w_qty,
+                    "نسبة الهدر %": w_pct,
+                    "تكلفة الهدر (ج.م)": w_cost,
+                    "ملاحظات": wr.get("notes") or "-"
+                })
 
             if w_rows_disp:
                 render_styled_table(
@@ -1926,8 +2054,15 @@ elif selected_page == "📈 التقارير":
                     w_rows_disp,
                     row_bg_colors=w_colors_disp
                 )
+                render_export_buttons(
+                    pd.DataFrame(w_export_list),
+                    "wastage_report",
+                    "تقرير الهدر والفاقد",
+                    f"الجهة: {sel_w_rep_loc} | الصنف: {sel_w_rep_item}",
+                    key_prefix="w_rep_exp"
+                )
             else:
-                st.info("لا توجد سجلات مطابقة للفلتر المختار.")
+                st.info("لا توجد سجلات مطابقة للفلاتر المختارة.")
 
 # =========================================================================
 # 13. التكويد
