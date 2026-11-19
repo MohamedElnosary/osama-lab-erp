@@ -20,7 +20,6 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
     
-    /* خلفية متناسقة مريحة للعين على شاشة الكمبيوتر + اتجاه عربي من اليمين لليسار */
     html, body, .stApp, [data-testid="stMain"], .main .block-container {
         font-family: 'Cairo', sans-serif !important;
         direction: rtl !important;
@@ -29,7 +28,6 @@ st.markdown("""
         color: #0f172a !important;
     }
 
-    /* محاذاة النصوص والمدخلات والجداول لليمين بوضوح عالٍ */
     p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     [data-testid="stWidgetLabel"], [data-testid="stAlert"], .stSelectbox, .stMultiSelect, .stTextInput, .stNumberInput, .stDateInput {
         direction: rtl !important;
@@ -42,7 +40,6 @@ st.markdown("""
         font-size: 16px !important;
     }
 
-    /* ترويسة موحدة لكل الشاشات بنفس مسمى القائمة الجانبية */
     .page-header-banner {
         background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
         border: 1.5px solid #bae6fd;
@@ -63,7 +60,6 @@ st.markdown("""
         padding: 0 !important;
     }
 
-    /* تنسيق التبويبات في كل الشاشات */
     .stTabs [data-baseweb="tab-list"] {
         gap: 10px;
         direction: rtl !important;
@@ -88,7 +84,6 @@ st.markdown("""
         box-shadow: 0 4px 10px rgba(14, 77, 146, 0.2);
     }
 
-    /* تنسيق النماذج والكروت البيضاء الواضحة */
     [data-testid="stForm"], [data-testid="stExpander"], div[data-testid="stVerticalBlockBorderWrapper"] {
         background-color: #ffffff !important;
         border: 1.5px solid #cbd5e1 !important;
@@ -96,7 +91,6 @@ st.markdown("""
         box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05) !important;
     }
 
-    /* تنسيق حقول الإدخال */
     [data-baseweb="input"], [data-baseweb="select"] > div {
         background-color: #f8fafc !important;
         border: 1.5px solid #94a3b8 !important;
@@ -109,7 +103,6 @@ st.markdown("""
         box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
     }
 
-    /* تنسيق الأزرار الرئيسية في كل الشاشات */
     .stButton > button[kind="primary"], [data-testid="stFormSubmitButton"] > button[kind="primary"] {
         background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%) !important;
         color: #ffffff !important;
@@ -125,7 +118,6 @@ st.markdown("""
         transform: translateY(-1px);
     }
 
-    /* كروت الإحصائيات التفاعلية في الرئيسية */
     .kpi-card {
         background: #ffffff;
         border-radius: 16px;
@@ -253,7 +245,7 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 # =========================================================================
-# نظام تسجيل الدخول (العنوان فوق الصندوق في المنتصف تماماً)
+# نظام تسجيل الدخول
 # =========================================================================
 if "user" not in st.session_state:
     st.session_state.user = None
@@ -374,7 +366,7 @@ user_loc_id = user["location_id"]
 user_loc_name = user["locations"]["name"] if user.get("locations") else "غير محدد"
 
 # =========================================================================
-# القائمة الجانبية ومعلومات المستخدم
+# القائمة الجانبية ومعلومات المستخدم حسب الصلاحية
 # =========================================================================
 ROLE_LABELS = {
     "chairman": "رئيس مجلس الإدارة",
@@ -399,23 +391,39 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
+    # حساب عدد الأذونات المعتمدة من المدير العام والجاهزة للصرف لأمين المخزن
+    approved_count_res = supabase.table("transfer_requests").select("id", count="exact").eq("status", "approved_ready_to_issue").execute()
+    approved_badge = f" ({approved_count_res.count})" if (approved_count_res.count and approved_count_res.count > 0) else ""
+
     menu_options = []
-    if role in ["chairman", "general_manager"]:
-        menu_options.append("📊 الرئيسية")
-    if role in ["chairman", "general_manager", "main_storekeeper"]:
-        menu_options.append("🏢 المخزن الرئيسي")
-        menu_options.append("🛒 الطلبيات")
-    menu_options.append("🧪 المخازن الفرعية")
-    if role in ["chairman", "general_manager", "main_storekeeper"]:
-        menu_options.append("📥 إضافة فاتورة")
-    menu_options.append("🔄 أذونات الصرف")
-    if role in ["chairman", "general_manager"]:
-        menu_options.append("✍️ الموافقات")
-    if role in ["chairman", "general_manager", "main_storekeeper"]:
-        menu_options.append("📈 التقارير")
-        menu_options.append("⚙️ التكويد")
-    if role in ["chairman", "general_manager"]:
-        menu_options.append("👥 إدارة المستخدمين والصلاحيات")
+    if role == "main_storekeeper":
+        # القوائم الخمس الخاصة بأمين المخزن الرئيسي فقط
+        menu_options = [
+            "🏢 المخزن الرئيسي",
+            "🛒 الطلبيات",
+            "📥 إضافة فاتورة",
+            f"📦 أذونات الصرف المعتمدة{approved_badge}",
+            "⚙️ التكويد"
+        ]
+    elif role in ["chairman", "general_manager"]:
+        menu_options = [
+            "📊 الرئيسية",
+            "🏢 المخزن الرئيسي",
+            "🛒 الطلبيات",
+            "🧪 المخازن الفرعية",
+            "📥 إضافة فاتورة",
+            "🔄 أذونات الصرف",
+            "✍️ الموافقات",
+            "📈 التقارير",
+            "⚙️ التكويد",
+            "👥 إدارة المستخدمين والصلاحيات"
+        ]
+    else:
+        # مشرف الوحدة / الفرع
+        menu_options = [
+            "🧪 المخازن الفرعية",
+            "🔄 أذونات الصرف"
+        ]
 
     selected_page = st.radio("القائمة الرئيسية", menu_options, label_visibility="collapsed")
     st.divider()
@@ -812,7 +820,54 @@ elif selected_page == "📥 إضافة فاتورة":
                     st.success(f"🎉 تم إضافة {kits_qty} {selected_item['unit_name']} ({total_tests} {sub_u}) بنجاح إلى المخزن الرئيسي!")
 
 # =========================================================================
-# 6. أذونات الصرف (تظهر فقط الأصناف المربوطة بالمخزن/الوحدة الطالبة)
+# 6. أذونات الصرف المعتمدة (شاشة أمين المخزن لتنفيذ الصرف بعد موافقة المدير العام)
+# =========================================================================
+elif selected_page.startswith("📦 أذونات الصرف المعتمدة"):
+    render_page_header("📦 أذونات الصرف المعتمدة من المدير العام")
+    
+    approved = supabase.table("transfer_requests").select("*, locations!transfer_requests_to_location_id_fkey(name), items(name, variant, unit_name), suppliers(name), batches(lot_number, expiry_date, tests_per_kit)").eq("status", "approved_ready_to_issue").execute()
+    if not approved.data:
+        st.info("✅ لا توجد أذونات صرف معتمدة من المدير العام بانتظار الصرف حالياً.")
+    else:
+        st.success(f"🔔 لديك **{len(approved.data)}** إذن صرف معتمد من المدير العام وجاهز للتسليم للمخازن الفرعية/الوحدات:")
+        for req in approved.data:
+            with st.container(border=True):
+                c1, c2 = st.columns([4, 1])
+                with c1:
+                    st.markdown(f"**صرف إلى:** {req['locations']['name']} | **الصنف:** {req['items']['name']} - **{req['suppliers']['name']}**")
+                    st.caption(f"الكمية المعتمدة: **{req['kits_requested']}** {req['items']['unit_name']} ({req['tests_requested']} اختبار/قطعة) | رقم التشغيلة: `{req['batches']['lot_number']}` | الصلاحية: `{req['batches']['expiry_date']}`")
+                with c2:
+                    if st.button("📦 تنفيذ الصرف الآن", key=f"iss_store_{req['id']}", type="primary", use_container_width=True):
+                        m_inv = supabase.table("inventory").select("*").eq("location_id", 1).eq("batch_id", req["batch_id"]).execute().data[0]
+                        new_m_kits = float(m_inv["kits_available"]) - req["kits_requested"]
+                        new_m_tests = float(m_inv["tests_available"]) - req["tests_requested"]
+                        supabase.table("inventory").update({"kits_available": max(0, new_m_kits), "tests_available": max(0, new_m_tests)}).eq("id", m_inv["id"]).execute()
+                        
+                        sub_inv_res = supabase.table("inventory").select("*").eq("location_id", req["to_location_id"]).eq("batch_id", req["batch_id"]).execute()
+                        if sub_inv_res.data:
+                            s_inv = sub_inv_res.data[0]
+                            supabase.table("inventory").update({
+                                "kits_available": float(s_inv["kits_available"]) + req["kits_requested"],
+                                "tests_available": float(s_inv["tests_available"]) + req["tests_requested"]
+                            }).eq("id", s_inv["id"]).execute()
+                        else:
+                            supabase.table("inventory").insert({
+                                "location_id": req["to_location_id"],
+                                "batch_id": req["batch_id"],
+                                "kits_available": float(req["kits_requested"]),
+                                "tests_available": float(req["tests_requested"])
+                            }).execute()
+                        
+                        supabase.table("transfer_requests").update({
+                            "status": "issued",
+                            "issued_by": user["id"],
+                            "issued_at": datetime.now().isoformat()
+                        }).eq("id", req["id"]).execute()
+                        st.success("🎉 تم الصرف والتحويل للمخزن الفرعي بنجاح!")
+                        st.rerun()
+
+# =========================================================================
+# 7. أذونات الصرف (للمشرفين والإدارة: إنشاء طلب صرف + متابعة المعتمدة)
 # =========================================================================
 elif selected_page == "🔄 أذونات الصرف":
     render_page_header("🔄 أذونات الصرف")
@@ -839,7 +894,6 @@ elif selected_page == "🔄 أذونات الصرف":
                     loc_choice = st.selectbox("اختر الوحدة / الفرع الطالب", sub_locs["name"].tolist())
                     target_loc_id = int(sub_locs[sub_locs["name"] == loc_choice].iloc[0]["id"])
                 
-                # تصفية الأصناف لتظهر فقط الأصناف المربوطة بهذا المخزن/الوحدة
                 if not rates_df.empty and "location_id" in rates_df.columns:
                     linked_item_ids = rates_df[rates_df["location_id"] == target_loc_id]["item_id"].tolist()
                     if linked_item_ids:
@@ -937,7 +991,7 @@ elif selected_page == "🔄 أذونات الصرف":
                                 st.rerun()
 
 # =========================================================================
-# 7. الموافقات
+# 8. الموافقات
 # =========================================================================
 elif selected_page == "✍️ الموافقات":
     render_page_header("✍️ الموافقات")
@@ -966,7 +1020,7 @@ elif selected_page == "✍️ الموافقات":
                         st.rerun()
 
 # =========================================================================
-# 8. التقارير
+# 9. التقارير
 # =========================================================================
 elif selected_page == "📈 التقارير":
     render_page_header("📈 التقارير")
@@ -1027,7 +1081,7 @@ elif selected_page == "📈 التقارير":
             st.info("لم يتم تسجيل فواتير توريد بعد.")
 
 # =========================================================================
-# 9. التكويد (اختيار متعدد للمخازن/الوحدات + معدل استهلاك لكل موقع)
+# 10. التكويد
 # =========================================================================
 elif selected_page == "⚙️ التكويد":
     render_page_header("⚙️ التكويد")
@@ -1038,7 +1092,6 @@ elif selected_page == "⚙️ التكويد":
         "🏥 المخازن الفرعية والوحدات"
     ])
     
-    # --- التبويب الأول: تكويد وتعديل الأصناف وربطها بالمخازن الفرعية والوحدات ---
     with st1:
         locs_df = get_df("locations")
         sub_locs_df = locs_df[locs_df["location_type"] != "main"] if not locs_df.empty else pd.DataFrame()
@@ -1060,7 +1113,6 @@ elif selected_page == "⚙️ التكويد":
                 help="اختر 'كل المخازن الفرعية والوحدات' أو اختر أكثر من فرع/وحدة محددة"
             )
 
-            # تحديد القائمة الفعلية للوحدات/الفروع المختارة
             if ALL_LOCS_OPTION in selected_targets:
                 effective_locs = sub_loc_names
             else:
@@ -1101,7 +1153,6 @@ elif selected_page == "⚙️ التكويد":
                         }).execute()
                         new_item_id = ins_res.data[0]["id"]
 
-                        # حفظ معدل استهلاك كل وحدة/فرع مختار
                         rates_payload = []
                         for loc_n, r_val in unit_rates_input.items():
                             l_id = int(sub_locs_df[sub_locs_df["name"] == loc_n].iloc[0]["id"])
@@ -1128,7 +1179,6 @@ elif selected_page == "⚙️ التكويد":
             cur_item = items_df[items_df["name"] == edit_item_choice].iloc[0]
             cur_item_id = int(cur_item["id"])
 
-            # جلب المواقع المربوطة حالياً بهذا الصنف ومعدلاتها
             cur_rates_map = {}
             if not rates_df.empty and not sub_locs_df.empty:
                 item_rates_rows = rates_df[rates_df["item_id"] == cur_item_id]
@@ -1193,7 +1243,6 @@ elif selected_page == "⚙️ التكويد":
                                 "monthly_consumption_rate": float(upd_total_rate)
                             }).eq("id", cur_item_id).execute()
 
-                            # تحديث ربط المواقع ومعدلاتها
                             supabase.table("location_consumption_rates").delete().eq("item_id", cur_item_id).execute()
                             new_rates_rows = []
                             for loc_n, r_val in edit_unit_rates.items():
@@ -1244,7 +1293,6 @@ elif selected_page == "⚙️ التكويد":
                 })
             st.dataframe(pd.DataFrame(summary_items_list), use_container_width=True, hide_index=True)
 
-    # --- التبويب الثاني: الشركات الموردة ---
     with st2:
         with st.expander("➕ إضافة شركة موردة جديدة", expanded=True):
             with st.form("add_sup_form"):
@@ -1301,7 +1349,6 @@ elif selected_page == "⚙️ التكويد":
             disp_sups.columns = ["الكود", "اسم الشركة", "بيانات التواصل"]
             st.dataframe(disp_sups, use_container_width=True, hide_index=True)
 
-    # --- التبويب الثالث: المخازن الفرعية والوحدات ---
     with st3:
         st.subheader("🏥 إدارة المخازن الفرعية ووحدات المعمل")
         LOC_TYPE_LABELS = {
@@ -1374,7 +1421,7 @@ elif selected_page == "⚙️ التكويد":
         st.dataframe(disp_locs, use_container_width=True, hide_index=True)
 
 # =========================================================================
-# 10. إدارة المستخدمين والصلاحيات
+# 11. إدارة المستخدمين والصلاحيات
 # =========================================================================
 elif selected_page == "👥 إدارة المستخدمين والصلاحيات":
     render_page_header("👥 إدارة المستخدمين والصلاحيات")
