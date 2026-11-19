@@ -155,6 +155,43 @@ st.markdown("""
         border: 1px solid #bae6fd;
     }
 
+    /* جدول الموافقات الاحترافي بخط كبير وواضح */
+    .approvals-table {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: #ffffff;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+        margin-bottom: 16px;
+        direction: rtl;
+        text-align: center;
+    }
+    .approvals-table th {
+        background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%);
+        color: #ffffff;
+        font-size: 17px;
+        font-weight: 800;
+        padding: 14px 10px;
+        text-align: center !important;
+        border: 1px solid #0e4d92;
+    }
+    .approvals-table td {
+        font-size: 16px;
+        font-weight: 700;
+        color: #0f172a;
+        padding: 14px 10px;
+        text-align: center !important;
+        border: 1px solid #cbd5e1;
+        vertical-align: middle;
+    }
+    .approvals-table tr:nth-child(even) {
+        background-color: #f8fafc;
+    }
+    .approvals-table tr:hover {
+        background-color: #eff6ff;
+    }
+
     /* =====================================================================
        تنسيق القائمة الجانبية الاحترافي (كروت تنقل عريضة وخط كبير)
        ===================================================================== */
@@ -432,6 +469,15 @@ with st.sidebar:
 def get_df(table_name, select_query="*"):
     res = supabase.table(table_name).select(select_query).order("id").execute()
     return pd.DataFrame(res.data) if res.data else pd.DataFrame()
+
+def format_coverage_duration(tests_qty: float, monthly_rate: float) -> str:
+    if monthly_rate <= 0:
+        return "غير محدد"
+    months = tests_qty / monthly_rate
+    days = round(months * 30)
+    if months >= 1:
+        return f"{months:.1f} شهر ({days} يوم)"
+    return f"{days} يوم"
 
 # =========================================================================
 # 1. الرئيسية
@@ -1062,18 +1108,36 @@ elif selected_page == "🔄 أذونات الصرف":
                                 st.rerun()
 
 # =========================================================================
-# 8. الموافقات (فلاتر بالوحدة والصنف + زر موافقة واعتماد All)
+# 8. الموافقات (عرض جدولي كبير وواضح للعين المجردة + اعتماد فردي وجماعي)
 # =========================================================================
 elif selected_page == "✍️ الموافقات":
     render_page_header("✍️ الموافقات")
     
-    pending_res = supabase.table("transfer_requests").select("*, locations!transfer_requests_to_location_id_fkey(name), items(name, variant, unit_name), suppliers(name), batches(lot_number, expiry_date)").eq("status", "pending_gm").execute()
+    pending_res = supabase.table("transfer_requests").select(
+        "*, locations!transfer_requests_to_location_id_fkey(name), items(id, name, variant, unit_name, sub_unit_name), suppliers(name), batches(lot_number, expiry_date)"
+    ).eq("status", "pending_gm").execute()
     all_pending = pending_res.data or []
     
     if not all_pending:
         st.info("✅ لا توجد أذونات صرف معلقة بانتظار الموافقة حالياً.")
     else:
-        # فلاتر التصفية بناءً على الوحدة/الفرع وبناءً على الصنف
+        rates_df = get_df("location_consumption_rates")
+        all_sub_inv = supabase.table("inventory").select("location_id, kits_available, tests_available, batches(item_id)").neq("location_id", 1).execute().data or []
+
+        rates_lookup = {}
+        if not rates_df.empty:
+            for _, rr in rates_df.iterrows():
+                rates_lookup[(int(rr["location_id"]), int(rr["item_id"]))] = float(rr["monthly_tests_rate"] or 0)
+
+        sub_stock_lookup = {}
+        for inv_r in all_sub_inv:
+            if inv_r.get("batches"):
+                key = (int(inv_r["location_id"]), int(inv_r["batches"]["item_id"]))
+                if key not in sub_stock_lookup:
+                    sub_stock_lookup[key] = {"kits": 0.0, "tests": 0.0}
+                sub_stock_lookup[key]["kits"] += float(inv_r["kits_available"] or 0)
+                sub_stock_lookup[key]["tests"] += float(inv_r["tests_available"] or 0)
+
         af1, af2 = st.columns(2)
         with af1:
             pending_locs = ["الكل"] + sorted(list({r["locations"]["name"] for r in all_pending if r.get("locations")}))
@@ -1094,7 +1158,6 @@ elif selected_page == "✍️ الموافقات":
         if not filtered_pending:
             st.warning("لا توجد طلبات مطابقة للفلاتر المختارة.")
         else:
-            # زر الاعتماد الجماعي لكل الطلبات المفلترة الظاهرة أمامك
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button(f"✅ موافقة واعتماد All ({len(filtered_pending)} طلب)", type="primary", use_container_width=True, key="approve_all_filtered_btn"):
                 ids_to_approve = [r["id"] for r in filtered_pending]
@@ -1106,15 +1169,84 @@ elif selected_page == "✍️ الموافقات":
                 st.success(f"🎉 تم اعتماد والموافقة على {len(ids_to_approve)} طلب دفعة واحدة!")
                 st.rerun()
 
-            st.divider()
-            # عرض كل طلب على حدة مع أزرار الموافقة أو الرفض الفردية
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # بناء صفوف الجدول الكامل الواضح
+            table_rows_html = ""
+            enriched_requests = []
+
             for req in filtered_pending:
+                to_loc_id = int(req["to_location_id"])
+                it_id = int(req["item_id"])
+                sub_u = "اختبار" if req["items"].get("sub_unit_name") == "تست" else (req["items"].get("sub_unit_name") or "اختبار")
+                
+                unit_rate = rates_lookup.get((to_loc_id, it_id), 0.0)
+                req_tests = float(req["tests_requested"] or 0)
+                req_coverage_txt = format_coverage_duration(req_tests, unit_rate)
+                
+                cur_sub_stock = sub_stock_lookup.get((to_loc_id, it_id), {"kits": 0.0, "tests": 0.0})
+                cur_kits = int(cur_sub_stock["kits"])
+                cur_tests = int(cur_sub_stock["tests"])
+                cur_stock_txt = f"{cur_kits} {req['items']['unit_name']} ({cur_tests} {sub_u})" if cur_tests > 0 else "صفر"
+
+                qty_txt = f"{req['kits_requested']} {req['items']['unit_name']} ({int(req_tests)} {sub_u})"
+                
+                enriched_requests.append({
+                    "req": req,
+                    "qty_txt": qty_txt,
+                    "req_coverage_txt": req_coverage_txt,
+                    "cur_stock_txt": cur_stock_txt
+                })
+
+                table_rows_html += f"""
+                <tr>
+                    <td style="color:#0e4d92; font-weight:800;">{req['locations']['name']}</td>
+                    <td style="font-weight:800;">{req['items']['name']}</td>
+                    <td>{req['suppliers']['name']}</td>
+                    <td style="color:#0284c7; font-weight:800;">{qty_txt}</td>
+                    <td style="color:#0d9488; font-weight:800;">{req_coverage_txt}</td>
+                    <td>{cur_stock_txt}</td>
+                    <td dir="ltr">{req['batches']['lot_number']}</td>
+                    <td dir="ltr">{req['batches']['expiry_date']}</td>
+                </tr>
+                """
+
+            st.markdown(f"""
+            <table class="approvals-table">
+                <thead>
+                    <tr>
+                        <th>الجهة الطالبة</th>
+                        <th>الصنف</th>
+                        <th>الشركة</th>
+                        <th>الكمية المطلوبة</th>
+                        <th>تكفي لمدة</th>
+                        <th>الرصيد الحالي بالوحدة</th>
+                        <th>رقم التشغيلة</th>
+                        <th>الصلاحية</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {table_rows_html}
+                </tbody>
+            </table>
+            """, unsafe_allow_html=True)
+
+            st.markdown("<h3 class='section-center-title'>⚡ اعتماد أو رفض الطلبات</h3>", unsafe_allow_html=True)
+            for item_info in enriched_requests:
+                req = item_info["req"]
                 with st.container(border=True):
-                    col1, col2, col3 = st.columns([3, 1, 1])
-                    with col1:
-                        st.markdown(f"**الجهة الطالبة:** {req['locations']['name']} | **الصنف:** {req['items']['name']} - شركة **{req['suppliers']['name']}**")
-                        st.caption(f"الكمية: **{req['kits_requested']}** {req['items']['unit_name']} ({req['tests_requested']} اختبار/قطعة) | رقم التشغيلة: `{req['batches']['lot_number']}` | الصلاحية: `{req['batches']['expiry_date']}`")
-                    with col2:
+                    c_info, c_app, c_rej = st.columns([3.5, 0.85, 0.65])
+                    with c_info:
+                        st.markdown(
+                            f"<div style='font-size:18px; font-weight:800; color:#0f172a;'>"
+                            f"🏥 <span style='color:#0e4d92;'>{req['locations']['name']}</span> &nbsp;|&nbsp; "
+                            f"🧪 {req['items']['name']} ({req['suppliers']['name']}) &nbsp;|&nbsp; "
+                            f"📦 <span style='color:#0284c7;'>{item_info['qty_txt']}</span> &nbsp;|&nbsp; "
+                            f"⏳ تكفي: <span style='color:#0d9488;'>{item_info['req_coverage_txt']}</span>"
+                            f"</div>",
+                            unsafe_allow_html=True
+                        )
+                    with c_app:
                         if st.button("✅ موافقة واعتماد", key=f"app_{req['id']}", type="primary", use_container_width=True):
                             supabase.table("transfer_requests").update({
                                 "status": "approved_ready_to_issue",
@@ -1122,7 +1254,7 @@ elif selected_page == "✍️ الموافقات":
                                 "approved_at": datetime.now().isoformat()
                             }).eq("id", req["id"]).execute()
                             st.rerun()
-                    with col3:
+                    with c_rej:
                         if st.button("❌ رفض", key=f"rej_{req['id']}", use_container_width=True):
                             supabase.table("transfer_requests").update({"status": "rejected"}).eq("id", req["id"]).execute()
                             st.rerun()
