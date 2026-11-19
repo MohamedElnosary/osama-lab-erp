@@ -28,299 +28,343 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
-    
-    html, body, .stApp, [data-testid="stMain"], .main .block-container {
-        font-family: 'Cairo', sans-serif !important;
-        direction: rtl !important;
-        text-align: right !important;
-        background: linear-gradient(160deg, #f1f5f9 0%, #e0f2fe 50%, #f8fafc 100%) !important;
-        color: #0f172a !important;
-    }
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
 
-    [data-testid="stDataFrame"], [data-testid="stDataFrame"] > div {
-        direction: rtl !important;
-        text-align: right !important;
-    }
+html, body, .stApp, [data-testid="stMain"], .main .block-container {
+    font-family: 'Cairo', sans-serif !important;
+    direction: rtl !important;
+    text-align: right !important;
+    background: linear-gradient(160deg, #f1f5f9 0%, #e0f2fe 50%, #f8fafc 100%) !important;
+    color: #0f172a !important;
+}
 
-    p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
-    [data-testid="stWidgetLabel"], [data-testid="stAlert"], .stSelectbox, .stMultiSelect, .stTextInput, .stNumberInput, .stDateInput {
-        direction: rtl !important;
-        text-align: right !important;
-    }
+[data-testid="stDataFrame"], [data-testid="stDataFrame"] > div {
+    direction: rtl !important;
+    text-align: right !important;
+}
 
-    [data-testid="stWidgetLabel"] p {
-        color: #0f172a !important;
-        font-weight: 700 !important;
-        font-size: 16px !important;
-    }
+p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
+[data-testid="stWidgetLabel"], [data-testid="stAlert"], .stSelectbox, .stMultiSelect, .stTextInput, .stNumberInput, .stDateInput {
+    direction: rtl !important;
+    text-align: right !important;
+}
 
-    .page-header-banner {
-        background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
-        border: 1.5px solid #bae6fd;
-        border-right: 7px solid #0e4d92;
-        border-left: 7px solid #0284c7;
-        border-radius: 18px;
-        padding: 16px 24px;
-        margin-bottom: 22px;
-        box-shadow: 0 6px 20px rgba(14, 77, 146, 0.08);
-        text-align: center !important;
-    }
-    .page-header-banner h1 {
-        text-align: center !important;
-        color: #0e4d92 !important;
-        font-size: 32px !important;
-        font-weight: 800 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
+[data-testid="stWidgetLabel"] p {
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    font-size: 16px !important;
+}
 
-    /* الستايل الجدولي الموحد في كل شاشات البرنامج */
-    .tbl-hdr-cell {
-        background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%);
-        color: #ffffff;
-        font-size: 15px;
-        font-weight: 800;
-        padding: 10px 6px;
-        border-radius: 8px;
-        text-align: center !important;
-        margin-bottom: 6px;
-    }
-    .tbl-row-cell {
-        background-color: #ffffff;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-        padding: 10px 6px;
-        font-size: 15px;
-        font-weight: 700;
-        color: #0f172a;
-        text-align: center !important;
-        min-height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 6px;
-        word-break: break-word;
-    }
+.page-header-banner {
+    background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+    border: 1.5px solid #bae6fd;
+    border-right: 7px solid #0e4d92;
+    border-left: 7px solid #0284c7;
+    border-radius: 18px;
+    padding: 16px 24px;
+    margin-bottom: 22px;
+    box-shadow: 0 6px 20px rgba(14, 77, 146, 0.08);
+    text-align: center !important;
+}
+.page-header-banner h1 {
+    text-align: center !important;
+    color: #0e4d92 !important;
+    font-size: 32px !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
 
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
-        direction: rtl !important;
-        background-color: #ffffff;
-        padding: 8px;
-        border-radius: 14px;
-        border: 1.5px solid #cbd5e1;
-        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
-    }
-    .stTabs [data-baseweb="tab"] {
-        background-color: #f1f5f9;
-        color: #1e293b;
-        border-radius: 10px;
-        padding: 10px 20px;
-        font-weight: 700;
-        font-size: 16px;
-        border: 1px solid transparent;
-    }
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%) !important;
-        color: #ffffff !important;
-        box-shadow: 0 4px 10px rgba(14, 77, 146, 0.2);
-    }
+/* الجدول الموحد النظيف (بدون أي مسافات بادئة تسبب عرض نص خام أو None) */
+.unified-tbl {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 6px;
+    direction: rtl !important;
+    text-align: center !important;
+    margin-bottom: 12px;
+}
+.unified-tbl thead th {
+    background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 800;
+    padding: 11px 8px;
+    text-align: center !important;
+    border: none;
+}
+.unified-tbl thead th:first-child {
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+.unified-tbl thead th:last-child {
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+.unified-tbl tbody td {
+    background-color: #ffffff;
+    color: #0f172a;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 11px 8px;
+    text-align: center !important;
+    border-top: 1px solid #cbd5e1;
+    border-bottom: 1px solid #cbd5e1;
+    vertical-align: middle;
+}
+.unified-tbl tbody td:first-child {
+    border-right: 1px solid #cbd5e1;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+.unified-tbl tbody td:last-child {
+    border-left: 1px solid #cbd5e1;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+.unified-tbl tbody tr:hover td {
+    background-color: #f0f9ff;
+}
 
-    [data-testid="stForm"], [data-testid="stExpander"], div[data-testid="stVerticalBlockBorderWrapper"] {
-        background-color: #ffffff !important;
-        border: 1.5px solid #cbd5e1 !important;
-        border-radius: 16px !important;
-        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05) !important;
-    }
+/* خلايا الصفوف التفاعلية (مثل المخازن الفرعية والموافقات) */
+.tbl-hdr-cell {
+    background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 800;
+    padding: 10px 6px;
+    border-radius: 8px;
+    text-align: center !important;
+    margin-bottom: 6px;
+}
+.tbl-row-cell {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 10px 6px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+    text-align: center !important;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 6px;
+    word-break: break-word;
+}
 
-    [data-baseweb="input"], [data-baseweb="select"] > div {
-        background-color: #f8fafc !important;
-        border: 1.5px solid #94a3b8 !important;
-        border-radius: 10px !important;
-        color: #0f172a !important;
-    }
-    [data-baseweb="input"]:focus-within, [data-baseweb="select"] > div:focus-within {
-        border-color: #0284c7 !important;
-        background-color: #ffffff !important;
-        box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
-    }
+.stTabs [data-baseweb="tab-list"] {
+    gap: 10px;
+    direction: rtl !important;
+    background-color: #ffffff;
+    padding: 8px;
+    border-radius: 14px;
+    border: 1.5px solid #cbd5e1;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+.stTabs [data-baseweb="tab"] {
+    background-color: #f1f5f9;
+    color: #1e293b;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-weight: 700;
+    font-size: 16px;
+    border: 1px solid transparent;
+}
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 10px rgba(14, 77, 146, 0.2);
+}
 
-    .stButton > button[kind="primary"], [data-testid="stFormSubmitButton"] > button[kind="primary"],
-    [data-testid="stDownloadButton"] > button[kind="primary"] {
-        background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%) !important;
-        color: #ffffff !important;
-        border: none !important;
-        border-radius: 10px !important;
-        font-weight: 700 !important;
-        font-size: 16px !important;
-        padding: 10px 16px !important;
-        box-shadow: 0 3px 10px rgba(14, 77, 146, 0.2) !important;
-    }
-    .stButton > button[kind="primary"]:hover, [data-testid="stFormSubmitButton"] > button[kind="primary"]:hover,
-    [data-testid="stDownloadButton"] > button[kind="primary"]:hover {
-        background: linear-gradient(90deg, #0b3d75 0%, #0369a1 100%) !important;
-        transform: translateY(-1px);
-    }
+[data-testid="stForm"], [data-testid="stExpander"], div[data-testid="stVerticalBlockBorderWrapper"] {
+    background-color: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05) !important;
+}
 
-    [data-testid="stDownloadButton"] > button[kind="secondary"] {
-        background: linear-gradient(90deg, #b91c1c 0%, #dc2626 100%) !important;
-        color: #ffffff !important;
-        border: none !important;
-        border-radius: 10px !important;
-        font-weight: 700 !important;
-        font-size: 16px !important;
-        padding: 10px 16px !important;
-        box-shadow: 0 3px 10px rgba(185, 28, 28, 0.22) !important;
-    }
-    [data-testid="stDownloadButton"] > button[kind="secondary"]:hover {
-        background: linear-gradient(90deg, #991b1b 0%, #b91c1c 100%) !important;
-        transform: translateY(-1px);
-    }
+[data-baseweb="input"], [data-baseweb="select"] > div {
+    background-color: #f8fafc !important;
+    border: 1.5px solid #94a3b8 !important;
+    border-radius: 10px !important;
+    color: #0f172a !important;
+}
+[data-baseweb="input"]:focus-within, [data-baseweb="select"] > div:focus-within {
+    border-color: #0284c7 !important;
+    background-color: #ffffff !important;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
+}
 
-    .kpi-card {
-        background: #ffffff;
-        border-radius: 16px;
-        padding: 20px 16px;
-        text-align: center !important;
-        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
-        border: 1.5px solid #cbd5e1;
-        transition: transform 0.25s ease, box-shadow 0.25s ease;
-        margin-bottom: 10px;
-    }
-    .kpi-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 24px rgba(14, 77, 146, 0.14);
-    }
-    .kpi-title {
-        font-size: 16px;
-        font-weight: 700;
-        color: #334155;
-        margin-bottom: 8px;
-        text-align: center !important;
-    }
-    .kpi-value {
-        font-size: 28px;
-        font-weight: 800;
-        text-align: center !important;
-    }
-    .section-center-title {
-        text-align: center !important;
-        color: #0e4d92 !important;
-        font-weight: 800 !important;
-        margin: 12px 0 16px 0 !important;
-        background: #ffffff;
-        padding: 10px;
-        border-radius: 12px;
-        border: 1px solid #bae6fd;
-    }
+.stButton > button[kind="primary"], [data-testid="stFormSubmitButton"] > button[kind="primary"],
+[data-testid="stDownloadButton"] > button[kind="primary"] {
+    background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 16px !important;
+    padding: 10px 16px !important;
+    box-shadow: 0 3px 10px rgba(14, 77, 146, 0.2) !important;
+}
+.stButton > button[kind="primary"]:hover, [data-testid="stFormSubmitButton"] > button[kind="primary"]:hover,
+[data-testid="stDownloadButton"] > button[kind="primary"]:hover {
+    background: linear-gradient(90deg, #0b3d75 0%, #0369a1 100%) !important;
+    transform: translateY(-1px);
+}
 
-    /* =====================================================================
-       تنسيق القائمة الجانبية الاحترافي (كروت تنقل عريضة وخط كبير)
-       ===================================================================== */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #ffffff 0%, #e0f2fe 100%) !important;
-        border-left: 2px solid #93c5fd !important;
-        direction: rtl !important;
-        text-align: right !important;
-    }
-    [data-testid="stSidebar"] div[role="radiogroup"] {
-        gap: 10px !important;
-        width: 100% !important;
-    }
-    [data-testid="stSidebar"] div[role="radiogroup"] label {
-        background-color: #ffffff !important;
-        border: 1.5px solid #cbd5e1 !important;
-        border-radius: 12px !important;
-        padding: 12px 16px !important;
-        margin: 0 !important;
-        width: 100% !important;
-        transition: all 0.2s ease-in-out !important;
-        box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04) !important;
-        cursor: pointer !important;
-        justify-content: flex-start !important;
-    }
-    [data-testid="stSidebar"] div[role="radiogroup"] label:hover {
-        border-color: #0284c7 !important;
-        background-color: #f0f9ff !important;
-        transform: translateX(-3px);
-    }
-    [data-testid="stSidebar"] div[role="radiogroup"] label p {
-        font-size: 17px !important;
-        font-weight: 700 !important;
-        color: #0f172a !important;
-        line-height: 1.4 !important;
-        text-align: right !important;
-    }
-    [data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
-        background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%) !important;
-        border-color: #0e4d92 !important;
-        box-shadow: 0 4px 12px rgba(14, 77, 146, 0.25) !important;
-    }
-    [data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) p {
-        color: #ffffff !important;
-    }
-    [data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {
-        display: none !important;
-    }
-    [data-testid="stSidebar"] button {
-        background-color: #fee2e2 !important;
-        color: #b91c1c !important;
-        border: 1.5px solid #fca5a5 !important;
-        border-radius: 12px !important;
-        font-size: 17px !important;
-        font-weight: 700 !important;
-        padding: 10px !important;
-    }
-    [data-testid="stSidebar"] button:hover {
-        background-color: #dc2626 !important;
-        color: #ffffff !important;
-    }
+[data-testid="stDownloadButton"] > button[kind="secondary"] {
+    background: linear-gradient(90deg, #b91c1c 0%, #dc2626 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 16px !important;
+    padding: 10px 16px !important;
+    box-shadow: 0 3px 10px rgba(185, 28, 28, 0.22) !important;
+}
+[data-testid="stDownloadButton"] > button[kind="secondary"]:hover {
+    background: linear-gradient(90deg, #991b1b 0%, #b91c1c 100%) !important;
+    transform: translateY(-1px);
+}
+
+.kpi-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 20px 16px;
+    text-align: center !important;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    border: 1.5px solid #cbd5e1;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    margin-bottom: 10px;
+}
+.kpi-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(14, 77, 146, 0.14);
+}
+.kpi-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 8px;
+    text-align: center !important;
+}
+.kpi-value {
+    font-size: 28px;
+    font-weight: 800;
+    text-align: center !important;
+}
+.section-center-title {
+    text-align: center !important;
+    color: #0e4d92 !important;
+    font-weight: 800 !important;
+    margin: 12px 0 16px 0 !important;
+    background: #ffffff;
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid #bae6fd;
+}
+
+/* =====================================================================
+   تنسيق القائمة الجانبية الاحترافي (كروت تنقل عريضة وخط كبير)
+   ===================================================================== */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #ffffff 0%, #e0f2fe 100%) !important;
+    border-left: 2px solid #93c5fd !important;
+    direction: rtl !important;
+    text-align: right !important;
+}
+[data-testid="stSidebar"] div[role="radiogroup"] {
+    gap: 10px !important;
+    width: 100% !important;
+}
+[data-testid="stSidebar"] div[role="radiogroup"] label {
+    background-color: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    border-radius: 12px !important;
+    padding: 12px 16px !important;
+    margin: 0 !important;
+    width: 100% !important;
+    transition: all 0.2s ease-in-out !important;
+    box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04) !important;
+    cursor: pointer !important;
+    justify-content: flex-start !important;
+}
+[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+    border-color: #0284c7 !important;
+    background-color: #f0f9ff !important;
+    transform: translateX(-3px);
+}
+[data-testid="stSidebar"] div[role="radiogroup"] label p {
+    font-size: 17px !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    line-height: 1.4 !important;
+    text-align: right !important;
+}
+[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
+    background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%) !important;
+    border-color: #0e4d92 !important;
+    box-shadow: 0 4px 12px rgba(14, 77, 146, 0.25) !important;
+}
+[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) p {
+    color: #ffffff !important;
+}
+[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {
+    display: none !important;
+}
+[data-testid="stSidebar"] button {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+    border: 1.5px solid #fca5a5 !important;
+    border-radius: 12px !important;
+    font-size: 17px !important;
+    font-weight: 700 !important;
+    padding: 10px !important;
+}
+[data-testid="stSidebar"] button:hover {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
 def render_page_header(title_text: str):
-    st.markdown(f"""
-    <div class="page-header-banner">
-        <h1>{title_text}</h1>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f'<div class="page-header-banner"><h1>{title_text}</h1></div>', unsafe_allow_html=True)
 
-def render_styled_table(headers: list, rows_data: list, col_widths: list = None):
-    """رسم جدول موحد بالستايل المعتمد (من اليمين لليسار) في جميع الشاشات"""
+def render_styled_table(headers: list, rows_data: list):
+    """رسم جدول HTML موحد ونظيف تماماً من اليمين لليسار بدون أي مسافات بادئة أو None"""
     if not rows_data:
         return
-    num_cols = len(headers)
-    widths = col_widths if (col_widths and len(col_widths) == num_cols) else [1.0] * num_cols
 
-    hdr_cols = st.columns(widths)
-    for idx, h_title in enumerate(headers):
-        with hdr_cols[idx]:
-            st.markdown(f"<div class='tbl-hdr-cell'>{h_title}</div>", unsafe_allow_html=True)
-
+    ths = "".join([f"<th>{str(h) if h is not None else ''}</th>" for h in headers])
+    trs_list = []
     for r_item in rows_data:
-        row_cols = st.columns(widths)
-        for idx, cell_val in enumerate(r_item):
-            extra_style = ""
+        tds_list = []
+        for cell_val in r_item:
             if isinstance(cell_val, tuple):
-                val_txt, extra_style = cell_val
+                raw_txt = cell_val[0]
+                style_str = cell_val[1] if len(cell_val) > 1 and cell_val[1] else ""
             else:
-                val_txt = str(cell_val)
-            with row_cols[idx]:
-                st.markdown(
-                    f"<div class='tbl-row-cell' style='{extra_style}'>{val_txt}</div>",
-                    unsafe_allow_html=True
-                )
+                raw_txt = cell_val
+                style_str = ""
+            safe_txt = str(raw_txt) if raw_txt is not None else ""
+            tds_list.append(f'<td style="{style_str}">{safe_txt}</td>')
+        trs_list.append("<tr>" + "".join(tds_list) + "</tr>")
 
-def df_to_styled_table(df: pd.DataFrame, col_widths: list = None):
+    html_table = f'<table class="unified-tbl"><thead><tr>{ths}</tr></thead><tbody>{"".join(trs_list)}</tbody></table>'
+    st.markdown(html_table, unsafe_allow_html=True)
+
+def df_to_styled_table(df: pd.DataFrame):
     """تحويل DataFrame مباشرة إلى الجدول الموحد"""
     if df is None or df.empty:
         return
-    headers = list(df.columns)
+    headers = [str(c) for c in df.columns]
     rows_data = []
     for _, row in df.iterrows():
-        rows_data.append([row[c] for c in headers])
-    render_styled_table(headers, rows_data, col_widths=col_widths)
+        rows_data.append(["" if pd.isna(row[c]) else str(row[c]) for c in df.columns])
+    render_styled_table(headers, rows_data)
 
 # =========================================================================
 # دالة توليد ملف PDF للطلبية
@@ -514,11 +558,7 @@ if st.session_state.user is None:
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("""
-        <div class="login-header-box">
-            <div class="login-header-title">🧬 معامل أ.د/ أسامة عبدالمتعال</div>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="login-header-box"><div class="login-header-title">🧬 معامل أ.د/ أسامة عبدالمتعال</div></div>', unsafe_allow_html=True)
 
     with st.form("login_form"):
         username = st.text_input("اسم المستخدم")
@@ -601,7 +641,6 @@ with st.sidebar:
         st.session_state.user = None
         st.rerun()
 
-# دوال مساعدة لجلب البيانات
 def get_df(table_name, select_query="*"):
     res = supabase.table(table_name).select(select_query).order("id").execute()
     return pd.DataFrame(res.data) if res.data else pd.DataFrame()
@@ -665,34 +704,14 @@ if selected_page == "📊 الرئيسية":
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown(f"""
-        <div class="kpi-card" style="border-top: 5px solid #0e4d92;">
-            <div class="kpi-title">💰 إجمالي قيمة المخزون الحالي</div>
-            <div class="kpi-value" style="color: #0e4d92;">{total_stock_value:,.2f} ج.م</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card" style="border-top: 5px solid #0e4d92;"><div class="kpi-title">💰 إجمالي قيمة المخزون الحالي</div><div class="kpi-value" style="color: #0e4d92;">{total_stock_value:,.2f} ج.م</div></div>', unsafe_allow_html=True)
     with c2:
-        st.markdown(f"""
-        <div class="kpi-card" style="border-top: 5px solid #0284c7;">
-            <div class="kpi-title">📉 تكلفة استهلاك آخر {period_days} يوم</div>
-            <div class="kpi-value" style="color: #0284c7;">{monthly_cost:,.2f} ج.م</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card" style="border-top: 5px solid #0284c7;"><div class="kpi-title">📉 تكلفة استهلاك آخر {period_days} يوم</div><div class="kpi-value" style="color: #0284c7;">{monthly_cost:,.2f} ج.م</div></div>', unsafe_allow_html=True)
     with c3:
-        st.markdown(f"""
-        <div class="kpi-card" style="border-top: 5px solid #0d9488;">
-            <div class="kpi-title">🧪 إجمالي السحب ({period_days} يوم)</div>
-            <div class="kpi-value" style="color: #0d9488;">{monthly_tests:,.0f} اختبار/قطعة</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card" style="border-top: 5px solid #0d9488;"><div class="kpi-title">🧪 إجمالي السحب ({period_days} يوم)</div><div class="kpi-value" style="color: #0d9488;">{monthly_tests:,.0f} اختبار/قطعة</div></div>', unsafe_allow_html=True)
     with c4:
         alert_color = "#dc2626" if len(expiring_soon) > 0 else "#16a34a"
-        st.markdown(f"""
-        <div class="kpi-card" style="border-top: 5px solid {alert_color};">
-            <div class="kpi-title">⚠️ تشغيلات قريبة الانتهاء (≤60 يوم)</div>
-            <div class="kpi-value" style="color: {alert_color};">{len(expiring_soon)} تشغيلة</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card" style="border-top: 5px solid {alert_color};"><div class="kpi-title">⚠️ تشغيلات قريبة الانتهاء (≤60 يوم)</div><div class="kpi-value" style="color: {alert_color};">{len(expiring_soon)} تشغيلة</div></div>', unsafe_allow_html=True)
 
     st.divider()
     col_a, col_b = st.columns(2)
@@ -889,9 +908,11 @@ elif selected_page == "🛒 الطلبيات":
     
     if sel_order_loc == "الكل (إجمالي المعمل)":
         inv_res = supabase.table("inventory").select("tests_available, batches(item_id)").eq("location_id", 1).execute()
+        stock_col_title = "الرصيد الحالي بالمخزن الرئيسي"
     else:
         target_loc_id = int(sub_locs[sub_locs["name"] == sel_order_loc].iloc[0]["id"])
         inv_res = supabase.table("inventory").select("tests_available, batches(item_id)").eq("location_id", target_loc_id).execute()
+        stock_col_title = f"الرصيد الحالي في ({sel_order_loc})"
     
     stock_by_item = {}
     for r in (inv_res.data or []):
@@ -911,14 +932,12 @@ elif selected_page == "🛒 الطلبيات":
         
         if sel_order_loc == "الكل (إجمالي المعمل)":
             rate = float(it["monthly_consumption_rate"] or 0)
-            stock_col_title = "الرصيد الحالي بالمخزن الرئيسي"
         else:
             if not rates_df.empty:
                 match_r = rates_df[(rates_df["location_id"] == target_loc_id) & (rates_df["item_id"] == iid)]
                 rate = float(match_r.iloc[0]["monthly_tests_rate"]) if not match_r.empty else 0.0
             else:
                 rate = 0.0
-            stock_col_title = f"الرصيد الحالي في ({sel_order_loc})"
 
         if rate > 0:
             needed_total = rate * months_cover
@@ -928,19 +947,18 @@ elif selected_page == "🛒 الطلبيات":
             
             if deficit > 0:
                 order_rows.append({
-                    "الصنف": it["name"],
-                    "التصنيف": it_cat_ar,
-                    "الاستهلاك الشهري": rate,
-                    f"الاحتياج لـ {months_cover} شهور": needed_total,
-                    stock_col_title: current_stock,
-                    "العجز المطلوب شراؤه": deficit,
-                    "الوحدة": unit_label
+                    "الصنف": str(it["name"]),
+                    "التصنيف": str(it_cat_ar),
+                    "الاستهلاك الشهري": float(rate),
+                    f"الاحتياج لـ {months_cover} شهور": float(needed_total),
+                    stock_col_title: float(current_stock),
+                    "العجز المطلوب شراؤه": float(deficit),
+                    "الوحدة": str(unit_label)
                 })
     
     if order_rows:
         st.markdown("<br>", unsafe_allow_html=True)
 
-        ord_col_widths = [1.6, 1.1, 1.1, 1.2, 1.4, 1.3, 1.0]
         ord_headers = [
             "الصنف",
             "التصنيف",
@@ -953,15 +971,15 @@ elif selected_page == "🛒 الطلبيات":
         styled_ord_rows = []
         for r_item in order_rows:
             styled_ord_rows.append([
-                (r_item['الصنف'], "color:#0e4d92; font-weight:800;"),
-                r_item['التصنيف'],
+                (r_item["الصنف"], "color:#0e4d92; font-weight:800;"),
+                r_item["التصنيف"],
                 f"{r_item['الاستهلاك الشهري']:,.0f}",
                 f"{r_item[f'الاحتياج لـ {months_cover} شهور']:,.0f}",
                 f"{r_item[stock_col_title]:,.0f}",
                 (f"{r_item['العجز المطلوب شراؤه']:,.0f}", "color:#dc2626; font-weight:800;"),
-                (r_item['الوحدة'], "color:#0d9488; font-weight:800;")
+                (r_item["الوحدة"], "color:#0d9488; font-weight:800;")
             ])
-        render_styled_table(ord_headers, styled_ord_rows, col_widths=ord_col_widths)
+        render_styled_table(ord_headers, styled_ord_rows)
 
         st.markdown("<br>", unsafe_allow_html=True)
         df_ord = pd.DataFrame(order_rows)
