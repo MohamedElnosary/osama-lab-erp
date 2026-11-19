@@ -75,6 +75,7 @@ st.markdown("""
         padding: 0 !important;
     }
 
+    /* الستايل الجدولي الموحد في كل شاشات البرنامج */
     .tbl-hdr-cell {
         background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%);
         color: #ffffff;
@@ -99,6 +100,7 @@ st.markdown("""
         align-items: center;
         justify-content: center;
         margin-bottom: 6px;
+        word-break: break-word;
     }
 
     .stTabs [data-baseweb="tab-list"] {
@@ -284,8 +286,42 @@ def render_page_header(title_text: str):
     </div>
     """, unsafe_allow_html=True)
 
+def render_styled_table(headers: list, rows_data: list, col_widths: list = None):
+    """رسم جدول موحد بالستايل المعتمد (من اليمين لليسار) في جميع الشاشات"""
+    if not rows_data:
+        return
+    num_cols = len(headers)
+    widths = col_widths if (col_widths and len(col_widths) == num_cols) else [1.0] * num_cols
+
+    hdr_cols = st.columns(widths)
+    for idx, h_title in enumerate(headers):
+        hdr_cols[idx].markdown(f"<div class='tbl-hdr-cell'>{h_title}</div>", unsafe_allow_html=True)
+
+    for r_item in rows_data:
+        row_cols = st.columns(widths)
+        for idx, cell_val in enumerate(r_item):
+            extra_style = ""
+            if isinstance(cell_val, tuple):
+                val_txt, extra_style = cell_val
+            else:
+                val_txt = str(cell_val)
+            row_cols[idx].markdown(
+                f"<div class='tbl-row-cell' style='{extra_style}'>{val_txt}</div>",
+                unsafe_allow_html=True
+            )
+
+def df_to_styled_table(df: pd.DataFrame, col_widths: list = None):
+    """تحويل DataFrame مباشرة إلى الجدول الموحد"""
+    if df is None or df.empty:
+        return
+    headers = list(df.columns)
+    rows_data = []
+    for _, row in df.iterrows():
+        rows_data.append([row[c] for c in headers])
+    render_styled_table(headers, rows_data, col_widths=col_widths)
+
 # =========================================================================
-# دالة توليد ملف PDF للطلبية (تعمل دائماً حتى بدون إنترنت إضافي)
+# دالة توليد ملف PDF للطلبية
 # =========================================================================
 @st.cache_resource
 def get_arabic_font_path():
@@ -696,7 +732,8 @@ if selected_page == "📊 الرئيسية":
     with ai_col1:
         st.markdown("<h3 class='section-center-title'>⏳ تنبيهات الصلاحيات</h3>", unsafe_allow_html=True)
         if expiring_soon:
-            st.dataframe(pd.DataFrame(expiring_soon).sort_values("الأيام المتبقية"), use_container_width=True, hide_index=True)
+            df_exp = pd.DataFrame(expiring_soon).sort_values("الأيام المتبقية")
+            df_to_styled_table(df_exp)
         else:
             st.success("✅ جميع التشغيلات بالمخازن صلاحيتها آمنة (أكثر من 60 يوماً).")
             
@@ -725,14 +762,15 @@ if selected_page == "📊 الرئيسية":
                         "الحالة": status
                     })
             if ai_alerts:
-                st.dataframe(pd.DataFrame(ai_alerts).sort_values("يكفي لمدة (شهر)"), use_container_width=True, hide_index=True)
+                df_ai = pd.DataFrame(ai_alerts).sort_values("يكفي لمدة (شهر)")
+                df_to_styled_table(df_ai)
             else:
                 st.info("قم بإدخال معدلات الاستهلاك الشهري للأصناف في التكويد لتفعيل التنبؤ التلقائي.")
         else:
             st.info("لا توجد أرصدة في المخزن الرئيسي حالياً.")
 
 # =========================================================================
-# 2. المخزن الرئيسي
+# 2. المخزن الرئيسي (بالستايل الجدولي الموحد)
 # =========================================================================
 elif selected_page == "🏢 المخزن الرئيسي":
     render_page_header("🏢 المخزن الرئيسي")
@@ -763,43 +801,66 @@ elif selected_page == "🏢 المخزن الرئيسي":
             for k, v in agg.items():
                 rate = k[4]
                 months_cov = round(v["tests"] / rate, 2) if rate > 0 else 0
-                agg_list.append({
-                    "الصنف": k[1],
-                    "التصنيف": "محاليل وكواشف" if k[2] == "reagent" else "مستهلكات",
-                    "الشركات المتوفرة": " + ".join(v["companies"]),
-                    "إجمالي العلب/الباكيت": v["kits"],
-                    "إجمالي الرصيد": v["tests"],
-                    "الوحدة": k[3],
-                    "الاستهلاك الشهري الكلي": rate,
-                    "يكفي لمدة (شهور)": f"{months_cov} شهر" if rate > 0 else "غير محدد",
-                    "القيمة المالية (ج.م)": round(v["value"], 2)
-                })
-            st.dataframe(pd.DataFrame(agg_list), use_container_width=True, hide_index=True)
+                agg_list.append([
+                    (k[1], "color:#0e4d92; font-weight:800;"),
+                    "محاليل وكواشف" if k[2] == "reagent" else "مستهلكات",
+                    " + ".join(v["companies"]),
+                    f"{v['kits']:,.0f}",
+                    (f"{v['tests']:,.0f}", "color:#0284c7; font-weight:800;"),
+                    (k[3], "color:#0d9488; font-weight:800;"),
+                    f"{rate:,.0f}",
+                    f"{months_cov} شهر" if rate > 0 else "غير محدد",
+                    f"{v['value']:,.2f} ج.م"
+                ])
+            agg_headers = [
+                "الصنف",
+                "التصنيف",
+                "الشركات المتوفرة",
+                "إجمالي العلب/الباكيت",
+                "إجمالي الرصيد",
+                "الوحدة",
+                "الاستهلاك الشهري",
+                "يكفي لمدة",
+                "القيمة المالية"
+            ]
+            render_styled_table(agg_headers, agg_list)
 
         with tab2:
             st.markdown("<h3 class='section-center-title'>تفاصيل الأرصدة حسب الشركة الموردة ورقم التشغيلة</h3>", unsafe_allow_html=True)
-            det_list = []
-            for r in rows:
+            det_rows = []
+            sorted_rows = sorted(rows, key=lambda x: (x["batches"]["items"]["name"], x["batches"]["expiry_date"]))
+            filter_item = st.selectbox("فلترة باسم الصنف (اختياري):", ["الكل"] + sorted(list({r["batches"]["items"]["name"] for r in rows})))
+            
+            for r in sorted_rows:
                 b = r["batches"]
                 it = b["items"]
+                if filter_item != "الكل" and it["name"] != filter_item:
+                    continue
                 sub_u = "اختبار" if it["sub_unit_name"] == "تست" else it["sub_unit_name"]
-                det_list.append({
-                    "الصنف": it['name'],
-                    "الشركة الموردة": b["suppliers"]["name"],
-                    "رقم التشغيلة": b["lot_number"],
-                    "تاريخ الصلاحية": b["expiry_date"],
-                    "العلب المتاحة": float(r["kits_available"]),
-                    "الكمية المتاحة": float(r["tests_available"]),
-                    "الوحدة": sub_u,
-                    "سعر الوحدة": float(b["unit_price_per_test"]),
-                    "إجمالي القيمة": round(float(r["tests_available"]) * float(b["unit_price_per_test"]), 2)
-                })
-            df_det = pd.DataFrame(det_list).sort_values(["الصنف", "تاريخ الصلاحية"])
-            
-            filter_item = st.selectbox("فلترة باسم الصنف (اختياري):", ["الكل"] + sorted(df_det["الصنف"].unique().tolist()))
-            if filter_item != "الكل":
-                df_det = df_det[df_det["الصنف"] == filter_item]
-            st.dataframe(df_det, use_container_width=True, hide_index=True)
+                tot_val = float(r["tests_available"]) * float(b["unit_price_per_test"])
+                det_rows.append([
+                    (it['name'], "color:#0e4d92; font-weight:800;"),
+                    b["suppliers"]["name"],
+                    b["lot_number"],
+                    b["expiry_date"],
+                    f"{float(r['kits_available']):,.0f}",
+                    (f"{float(r['tests_available']):,.0f}", "color:#0284c7; font-weight:800;"),
+                    (sub_u, "color:#0d9488; font-weight:800;"),
+                    f"{float(b['unit_price_per_test']):,.2f}",
+                    f"{tot_val:,.2f} ج.م"
+                ])
+            det_headers = [
+                "الصنف",
+                "الشركة الموردة",
+                "رقم التشغيلة",
+                "تاريخ الصلاحية",
+                "العلب المتاحة",
+                "الكمية المتاحة",
+                "الوحدة",
+                "سعر الوحدة",
+                "إجمالي القيمة"
+            ]
+            render_styled_table(det_headers, det_rows)
 
 # =========================================================================
 # 3. الطلبيات
@@ -887,19 +948,18 @@ elif selected_page == "🛒 الطلبيات":
             "العجز المطلوب شراؤه",
             "الوحدة"
         ]
-        o_hdr_cols = st.columns(ord_col_widths)
-        for idx, h_title in enumerate(ord_headers):
-            o_hdr_cols[idx].markdown(f"<div class='tbl-hdr-cell'>{h_title}</div>", unsafe_allow_html=True)
-
+        styled_ord_rows = []
         for r_item in order_rows:
-            o_row_cols = st.columns(ord_col_widths)
-            o_row_cols[0].markdown(f"<div class='tbl-row-cell' style='color:#0e4d92;'>{r_item['الصنف']}</div>", unsafe_allow_html=True)
-            o_row_cols[1].markdown(f"<div class='tbl-row-cell'>{r_item['التصنيف']}</div>", unsafe_allow_html=True)
-            o_row_cols[2].markdown(f"<div class='tbl-row-cell'>{r_item['الاستهلاك الشهري']:,.0f}</div>", unsafe_allow_html=True)
-            o_row_cols[3].markdown(f"<div class='tbl-row-cell'>{r_item[f'الاحتياج لـ {months_cover} شهور']:,.0f}</div>", unsafe_allow_html=True)
-            o_row_cols[4].markdown(f"<div class='tbl-row-cell'>{r_item[stock_col_title]:,.0f}</div>", unsafe_allow_html=True)
-            o_row_cols[5].markdown(f"<div class='tbl-row-cell' style='color:#dc2626; font-weight:800;'>{r_item['العجز المطلوب شراؤه']:,.0f}</div>", unsafe_allow_html=True)
-            o_row_cols[6].markdown(f"<div class='tbl-row-cell' style='color:#0d9488;'>{r_item['الوحدة']}</div>", unsafe_allow_html=True)
+            styled_ord_rows.append([
+                (r_item['الصنف'], "color:#0e4d92; font-weight:800;"),
+                r_item['التصنيف'],
+                f"{r_item['الاستهلاك الشهري']:,.0f}",
+                f"{r_item[f'الاحتياج لـ {months_cover} شهور']:,.0f}",
+                f"{r_item[stock_col_title]:,.0f}",
+                (f"{r_item['العجز المطلوب شراؤه']:,.0f}", "color:#dc2626; font-weight:800;"),
+                (r_item['الوحدة'], "color:#0d9488; font-weight:800;")
+            ])
+        render_styled_table(ord_headers, styled_ord_rows, col_widths=ord_col_widths)
 
         st.markdown("<br>", unsafe_allow_html=True)
         df_ord = pd.DataFrame(order_rows)
@@ -1122,41 +1182,49 @@ elif selected_page.startswith("📦 أذونات الصرف المعتمدة"):
         st.info("✅ لا توجد أذونات صرف معتمدة من المدير العام بانتظار الصرف حالياً.")
     else:
         st.success(f"🔔 لديك **{len(approved.data)}** إذن صرف معتمد من المدير العام وجاهز للتسليم للمخازن الفرعية/الوحدات:")
+        app_widths = [1.5, 1.3, 1.2, 1.5, 1.1, 1.1, 1.3]
+        app_headers = ["صرف إلى", "الصنف", "الشركة", "الكمية المعتمدة", "رقم التشغيلة", "الصلاحية", "الإجراء"]
+        a_hdr_cols = st.columns(app_widths)
+        for idx, h_t in enumerate(app_headers):
+            a_hdr_cols[idx].markdown(f"<div class='tbl-hdr-cell'>{h_t}</div>", unsafe_allow_html=True)
+
         for req in approved.data:
-            with st.container(border=True):
-                c1, c2 = st.columns([4, 1])
-                with c1:
-                    st.markdown(f"**صرف إلى:** {req['locations']['name']} | **الصنف:** {req['items']['name']} - **{req['suppliers']['name']}**")
-                    st.caption(f"الكمية المعتمدة: **{req['kits_requested']}** {req['items']['unit_name']} ({req['tests_requested']} اختبار/قطعة) | رقم التشغيلة: `{req['batches']['lot_number']}` | الصلاحية: `{req['batches']['expiry_date']}`")
-                with c2:
-                    if st.button("📦 تنفيذ الصرف الآن", key=f"iss_store_{req['id']}", type="primary", use_container_width=True):
-                        m_inv = supabase.table("inventory").select("*").eq("location_id", 1).eq("batch_id", req["batch_id"]).execute().data[0]
-                        new_m_kits = float(m_inv["kits_available"]) - req["kits_requested"]
-                        new_m_tests = float(m_inv["tests_available"]) - req["tests_requested"]
-                        supabase.table("inventory").update({"kits_available": max(0, new_m_kits), "tests_available": max(0, new_m_tests)}).eq("id", m_inv["id"]).execute()
-                        
-                        sub_inv_res = supabase.table("inventory").select("*").eq("location_id", req["to_location_id"]).eq("batch_id", req["batch_id"]).execute()
-                        if sub_inv_res.data:
-                            s_inv = sub_inv_res.data[0]
-                            supabase.table("inventory").update({
-                                "kits_available": float(s_inv["kits_available"]) + req["kits_requested"],
-                                "tests_available": float(s_inv["tests_available"]) + req["tests_requested"]
-                            }).eq("id", s_inv["id"]).execute()
-                        else:
-                            supabase.table("inventory").insert({
-                                "location_id": req["to_location_id"],
-                                "batch_id": req["batch_id"],
-                                "kits_available": float(req["kits_requested"]),
-                                "tests_available": float(req["tests_requested"])
-                            }).execute()
-                        
-                        supabase.table("transfer_requests").update({
-                            "status": "issued",
-                            "issued_by": user["id"],
-                            "issued_at": datetime.now().isoformat()
-                        }).eq("id", req["id"]).execute()
-                        st.success("🎉 تم الصرف والتحويل للمخزن الفرعي بنجاح!")
-                        st.rerun()
+            r_cols = st.columns(app_widths)
+            r_cols[0].markdown(f"<div class='tbl-row-cell' style='color:#0e4d92;'>{req['locations']['name']}</div>", unsafe_allow_html=True)
+            r_cols[1].markdown(f"<div class='tbl-row-cell'>{req['items']['name']}</div>", unsafe_allow_html=True)
+            r_cols[2].markdown(f"<div class='tbl-row-cell'>{req['suppliers']['name']}</div>", unsafe_allow_html=True)
+            r_cols[3].markdown(f"<div class='tbl-row-cell' style='color:#0284c7;'>{req['kits_requested']} {req['items']['unit_name']} ({req['tests_requested']} اختبار)</div>", unsafe_allow_html=True)
+            r_cols[4].markdown(f"<div class='tbl-row-cell' dir='ltr'>{req['batches']['lot_number']}</div>", unsafe_allow_html=True)
+            r_cols[5].markdown(f"<div class='tbl-row-cell' dir='ltr'>{req['batches']['expiry_date']}</div>", unsafe_allow_html=True)
+            with r_cols[6]:
+                if st.button("📦 تنفيذ الصرف", key=f"iss_store_{req['id']}", type="primary", use_container_width=True):
+                    m_inv = supabase.table("inventory").select("*").eq("location_id", 1).eq("batch_id", req["batch_id"]).execute().data[0]
+                    new_m_kits = float(m_inv["kits_available"]) - req["kits_requested"]
+                    new_m_tests = float(m_inv["tests_available"]) - req["tests_requested"]
+                    supabase.table("inventory").update({"kits_available": max(0, new_m_kits), "tests_available": max(0, new_m_tests)}).eq("id", m_inv["id"]).execute()
+                    
+                    sub_inv_res = supabase.table("inventory").select("*").eq("location_id", req["to_location_id"]).eq("batch_id", req["batch_id"]).execute()
+                    if sub_inv_res.data:
+                        s_inv = sub_inv_res.data[0]
+                        supabase.table("inventory").update({
+                            "kits_available": float(s_inv["kits_available"]) + req["kits_requested"],
+                            "tests_available": float(s_inv["tests_available"]) + req["tests_requested"]
+                        }).eq("id", s_inv["id"]).execute()
+                    else:
+                        supabase.table("inventory").insert({
+                            "location_id": req["to_location_id"],
+                            "batch_id": req["batch_id"],
+                            "kits_available": float(req["kits_requested"]),
+                            "tests_available": float(req["tests_requested"])
+                        }).execute()
+                    
+                    supabase.table("transfer_requests").update({
+                        "status": "issued",
+                        "issued_by": user["id"],
+                        "issued_at": datetime.now().isoformat()
+                    }).eq("id", req["id"]).execute()
+                    st.success("🎉 تم الصرف والتحويل للمخزن الفرعي بنجاح!")
+                    st.rerun()
 
 # =========================================================================
 # 7. أذونات الصرف
@@ -1404,7 +1472,7 @@ elif selected_page == "✍️ الموافقات":
                 st.rerun()
 
 # =========================================================================
-# 9. التقارير
+# 9. التقارير (بالستايل الجدولي الموحد)
 # =========================================================================
 elif selected_page == "📈 التقارير":
     render_page_header("📈 التقارير")
@@ -1434,10 +1502,23 @@ elif selected_page == "📈 التقارير":
                 إجمالي_التكلفة_جنيه=("التكلفة الإجمالية (ج.م)", "sum")
             ).reset_index()
             summary["متوسط_سعر_الاختبار"] = (summary["إجمالي_التكلفة_جنيه"] / summary["إجمالي_الكمية"]).round(2)
-            st.dataframe(summary, use_container_width=True, hide_index=True)
+            
+            sum_rows = []
+            for _, sr in summary.iterrows():
+                sum_rows.append([
+                    (sr["الصنف"], "color:#0e4d92; font-weight:800;"),
+                    sr["الشركة الموردة"],
+                    (f"{sr['إجمالي_الكمية']:,.0f}", "color:#0284c7; font-weight:800;"),
+                    (f"{sr['إجمالي_التكلفة_جنيه']:,.2f} ج.م", "color:#0d9488; font-weight:800;"),
+                    f"{sr['متوسط_سعر_الاختبار']:,.2f} ج.م"
+                ])
+            render_styled_table(
+                ["الصنف", "الشركة الموردة", "إجمالي الكمية", "إجمالي التكلفة", "متوسط سعر الاختبار"],
+                sum_rows
+            )
             
             with st.expander("عرض السجل التفصيلي لكل حركة سحب"):
-                st.dataframe(df_l, use_container_width=True, hide_index=True)
+                df_to_styled_table(df_l)
         else:
             st.info("لا توجد حركات استهلاك مسجلة في هذه الفترة.")
 
@@ -1460,12 +1541,12 @@ elif selected_page == "📈 التقارير":
             fig_p = px.line(sub_b, x="تاريخ التوريد", y="سعر الاختبار/القطعة (ج.م)", color="الشركة الموردة", markers=True, title=f"تطور ومقارنة سعر ({sel_p_item}) بين الشركات")
             fig_p.update_layout(font_family="Cairo", title_x=0.5, paper_bgcolor="white", plot_bgcolor="#f8fafc")
             st.plotly_chart(fig_p, use_container_width=True)
-            st.dataframe(sub_b, use_container_width=True, hide_index=True)
+            df_to_styled_table(sub_b)
         else:
             st.info("لم يتم تسجيل فواتير توريد بعد.")
 
 # =========================================================================
-# 10. التكويد
+# 10. التكويد (جداول بالستايل الموحد)
 # =========================================================================
 elif selected_page == "⚙️ التكويد":
     render_page_header("⚙️ التكويد")
@@ -1675,7 +1756,7 @@ elif selected_page == "⚙️ التكويد":
                     "المخازن الفرعية والوحدات (المعدل الشهري)": " | ".join(linked_names) if linked_names else "غير مربوط",
                     "الإجمالي الشهري الكلي": float(it_row["monthly_consumption_rate"] or 0)
                 })
-            st.dataframe(pd.DataFrame(summary_items_list), use_container_width=True, hide_index=True)
+            df_to_styled_table(pd.DataFrame(summary_items_list))
 
     with st2:
         with st.expander("➕ إضافة شركة موردة جديدة", expanded=True):
@@ -1731,7 +1812,7 @@ elif selected_page == "⚙️ التكويد":
 
             disp_sups = sups_df[["id", "name", "contact_info"]].copy()
             disp_sups.columns = ["الكود", "اسم الشركة", "بيانات التواصل"]
-            st.dataframe(disp_sups, use_container_width=True, hide_index=True)
+            df_to_styled_table(disp_sups)
 
     with st3:
         st.subheader("🏥 إدارة المخازن الفرعية ووحدات المعمل")
@@ -1802,10 +1883,10 @@ elif selected_page == "⚙️ التكويد":
         disp_locs = locs_df[["id", "name", "location_type"]].copy()
         disp_locs["location_type"] = disp_locs["location_type"].map(LOC_TYPE_LABELS)
         disp_locs.columns = ["الكود", "اسم المخزن / الوحدة", "النوع"]
-        st.dataframe(disp_locs, use_container_width=True, hide_index=True)
+        df_to_styled_table(disp_locs)
 
 # =========================================================================
-# 11. إدارة المستخدمين والصلاحيات
+# 11. إدارة المستخدمين والصلاحيات (بالستايل الجدولي الموحد)
 # =========================================================================
 elif selected_page == "👥 إدارة المستخدمين والصلاحيات":
     render_page_header("👥 إدارة المستخدمين والصلاحيات")
@@ -1840,5 +1921,6 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
     users_df = get_df("users", "id, full_name, username, role, is_active")
     if not users_df.empty:
         users_df["role"] = users_df["role"].map(ROLE_LABELS)
-        users_df.columns = ["الكود", "الاسم الكامل", "اسم الدخول", "الصلاحية", "نشط"]
-        st.dataframe(users_df, use_container_width=True, hide_index=True)
+        users_df["is_active"] = users_df["is_active"].map({True: "نشط ✅", False: "موقوف ❌"})
+        users_df.columns = ["الكود", "الاسم الكامل", "اسم الدخول", "الصلاحية", "الحالة"]
+        df_to_styled_table(users_df)
