@@ -28,6 +28,12 @@ st.markdown("""
         color: #0f172a !important;
     }
 
+    /* فرض اتجاه اليمين لليسار على الجداول وكافة العناصر */
+    [data-testid="stDataFrame"], [data-testid="stDataFrame"] > div {
+        direction: rtl !important;
+        text-align: right !important;
+    }
+
     p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     [data-testid="stWidgetLabel"], [data-testid="stAlert"], .stSelectbox, .stMultiSelect, .stTextInput, .stNumberInput, .stDateInput {
         direction: rtl !important;
@@ -1071,7 +1077,7 @@ elif selected_page == "🔄 أذونات الصرف":
                                 st.rerun()
 
 # =========================================================================
-# 8. الموافقات (جدول واضح ومقروء بالكامل + اعتماد فردي وجماعي)
+# 8. الموافقات (جدول RTL نظيف وأزرار الموافقة أسفله مباشرة بدون تكرار)
 # =========================================================================
 elif selected_page == "✍️ الموافقات":
     render_page_header("✍️ الموافقات")
@@ -1121,23 +1127,7 @@ elif selected_page == "✍️ الموافقات":
         if not filtered_pending:
             st.warning("لا توجد طلبات مطابقة للفلاتر المختارة.")
         else:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button(f"✅ موافقة واعتماد All ({len(filtered_pending)} طلب)", type="primary", use_container_width=True, key="approve_all_filtered_btn"):
-                ids_to_approve = [r["id"] for r in filtered_pending]
-                supabase.table("transfer_requests").update({
-                    "status": "approved_ready_to_issue",
-                    "approved_by": user["id"],
-                    "approved_at": datetime.now().isoformat()
-                }).in_("id", ids_to_approve).execute()
-                st.success(f"🎉 تم اعتماد والموافقة على {len(ids_to_approve)} طلب دفعة واحدة!")
-                st.rerun()
-
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            # تجهيز الجدول النظيف والواضح
             table_data = []
-            enriched_requests = []
-
             for req in filtered_pending:
                 to_loc_id = int(req["to_location_id"])
                 it_id = int(req["item_id"])
@@ -1154,6 +1144,7 @@ elif selected_page == "✍️ الموافقات":
 
                 qty_txt = f"{req['kits_requested']} {req['items']['unit_name']} ({int(req_tests)} {sub_u})"
                 
+                # ترتيب الأعمدة من اليمين إلى اليسار
                 table_data.append({
                     "الجهة الطالبة": req['locations']['name'],
                     "الصنف": req['items']['name'],
@@ -1165,43 +1156,56 @@ elif selected_page == "✍️ الموافقات":
                     "الصلاحية": req['batches']['expiry_date']
                 })
 
-                enriched_requests.append({
-                    "req": req,
-                    "qty_txt": qty_txt,
-                    "req_coverage_txt": req_coverage_txt,
-                    "cur_stock_txt": cur_stock_txt
-                })
-
-            # عرض الجدول الرئيسي بشكل واضح وكبير للعين المجردة
+            # عرض الجدول الرئيسي من اليمين إلى اليسار
             st.dataframe(pd.DataFrame(table_data), use_container_width=True, hide_index=True)
 
-            st.markdown("<h3 class='section-center-title'>⚡ اعتماد أو رفض كل طلب</h3>", unsafe_allow_html=True)
-            for item_info in enriched_requests:
-                req = item_info["req"]
-                with st.container(border=True):
-                    c_info, c_app, c_rej = st.columns([3.5, 0.85, 0.65])
-                    with c_info:
-                        st.markdown(
-                            f"<div style='font-size:18px; font-weight:800; color:#0f172a;'>"
-                            f"🏥 <span style='color:#0e4d92;'>{req['locations']['name']}</span> &nbsp;|&nbsp; "
-                            f"🧪 {req['items']['name']} ({req['suppliers']['name']}) &nbsp;|&nbsp; "
-                            f"📦 <span style='color:#0284c7;'>{item_info['qty_txt']}</span> &nbsp;|&nbsp; "
-                            f"⏳ تكفي: <span style='color:#0d9488;'>{item_info['req_coverage_txt']}</span>"
-                            f"</div>",
-                            unsafe_allow_html=True
-                        )
-                    with c_app:
-                        if st.button("✅ موافقة واعتماد", key=f"app_{req['id']}", type="primary", use_container_width=True):
-                            supabase.table("transfer_requests").update({
-                                "status": "approved_ready_to_issue",
-                                "approved_by": user["id"],
-                                "approved_at": datetime.now().isoformat()
-                            }).eq("id", req["id"]).execute()
-                            st.rerun()
-                    with c_rej:
-                        if st.button("❌ رفض", key=f"rej_{req['id']}", use_container_width=True):
-                            supabase.table("transfer_requests").update({"status": "rejected"}).eq("id", req["id"]).execute()
-                            st.rerun()
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # أزرار الموافقة والرفض أسفل الجدول مباشرة
+            if len(filtered_pending) == 1:
+                single_req = filtered_pending[0]
+                b_col1, b_col2 = st.columns([3, 1])
+                with b_col1:
+                    if st.button("✅ موافقة واعتماد", key=f"app_single_{single_req['id']}", type="primary", use_container_width=True):
+                        supabase.table("transfer_requests").update({
+                            "status": "approved_ready_to_issue",
+                            "approved_by": user["id"],
+                            "approved_at": datetime.now().isoformat()
+                        }).eq("id", single_req["id"]).execute()
+                        st.success("🎉 تم الاعتماد والموافقة بنجاح!")
+                        st.rerun()
+                with b_col2:
+                    if st.button("❌ رفض", key=f"rej_single_{single_req['id']}", use_container_width=True):
+                        supabase.table("transfer_requests").update({"status": "rejected"}).eq("id", single_req["id"]).execute()
+                        st.rerun()
+            else:
+                if st.button(f"✅ موافقة واعتماد All ({len(filtered_pending)} طلب)", type="primary", use_container_width=True, key="approve_all_filtered_btn"):
+                    ids_to_approve = [r["id"] for r in filtered_pending]
+                    supabase.table("transfer_requests").update({
+                        "status": "approved_ready_to_issue",
+                        "approved_by": user["id"],
+                        "approved_at": datetime.now().isoformat()
+                    }).in_("id", ids_to_approve).execute()
+                    st.success(f"🎉 تم اعتماد والموافقة على {len(ids_to_approve)} طلب دفعة واحدة!")
+                    st.rerun()
+
+                # أزرار فردية مدمجة لاعتماد أو رفض طلب معين عند تعدد الطلبات
+                b_cols = st.columns(min(len(filtered_pending), 3))
+                for idx, req in enumerate(filtered_pending):
+                    with b_cols[idx % 3]:
+                        c_a, c_r = st.columns([2, 1])
+                        with c_a:
+                            if st.button(f"✅ اعتماد: {req['items']['name']} ({req['locations']['name']})", key=f"app_{req['id']}", use_container_width=True):
+                                supabase.table("transfer_requests").update({
+                                    "status": "approved_ready_to_issue",
+                                    "approved_by": user["id"],
+                                    "approved_at": datetime.now().isoformat()
+                                }).eq("id", req["id"]).execute()
+                                st.rerun()
+                        with c_r:
+                            if st.button("❌ رفض", key=f"rej_{req['id']}", use_container_width=True):
+                                supabase.table("transfer_requests").update({"status": "rejected"}).eq("id", req["id"]).execute()
+                                st.rerun()
 
 # =========================================================================
 # 9. التقارير
