@@ -616,6 +616,7 @@ with st.sidebar:
             "📥 إضافة فاتورة",
             f"📦 أذونات الصرف المعتمدة{approved_badge}",
             "🔮 التنبؤ بكفاية المخزون الرئيسي",
+            "📉 شاشة الهدر",
             "⚙️ التكويد"
         ]
     elif role in ["chairman", "general_manager"]:
@@ -623,6 +624,7 @@ with st.sidebar:
             "📊 الرئيسية",
             "⏳ تنبيهات تاريخ الصلاحية",
             "🔮 التنبؤ بكفاية المخزون الرئيسي",
+            "📉 شاشة الهدر",
             "🏢 المخزن الرئيسي",
             "🛒 الطلبيات",
             "🧪 المخازن الفرعية",
@@ -638,6 +640,7 @@ with st.sidebar:
             "🧪 المخازن الفرعية",
             "⏳ تنبيهات تاريخ الصلاحية",
             "🔮 التنبؤ بكفاية المخزون الرئيسي",
+            "📉 شاشة الهدر",
             "🔄 أذونات الصرف"
         ]
 
@@ -755,7 +758,7 @@ if selected_page == "📊 الرئيسية":
             st.info("لا توجد أرصدة مسجلة بعد.")
 
 # =========================================================================
-# 2. شاشة مستقلة: تنبيهات تاريخ الصلاحية (تلوين الصف بالكامل + فلاتر)
+# 2. شاشة مستقلة: تنبيهات تاريخ الصلاحية
 # =========================================================================
 elif selected_page == "⏳ تنبيهات تاريخ الصلاحية":
     render_page_header("⏳ تنبيهات تاريخ الصلاحية")
@@ -765,7 +768,6 @@ elif selected_page == "⏳ تنبيهات تاريخ الصلاحية":
     ).gt("tests_available", 0).execute()
     all_inv_rows = inv_res.data or []
 
-    # تحديد النطاق حسب الصلاحية (مشرف الوحدة/الفرع يرى وحدته فقط، والإدارة ترى الكل)
     if role == "unit_supervisor" and user_loc_id != 1:
         scoped_rows = [r for r in all_inv_rows if int(r["location_id"]) == int(user_loc_id)]
         st.markdown(f"<h3 class='section-center-title'>🏥 صلاحيات مخزن: {user_loc_name}</h3>", unsafe_allow_html=True)
@@ -785,7 +787,6 @@ elif selected_page == "⏳ تنبيهات تاريخ الصلاحية":
     with ef3:
         sel_exp_cat = st.selectbox("📂 التصنيف (محاليل / مستهلكات):", ["الكل", "محاليل وكواشف", "مستهلكات"], key="exp_filter_cat")
 
-    # دليل الألوان
     st.markdown("""
     <div style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; padding:10px 16px; margin-bottom:16px; font-weight:700; font-size:15px;">
         🎨 <b>دليل ألوان الصلاحية:</b> &nbsp;
@@ -817,7 +818,6 @@ elif selected_page == "⏳ تنبيهات تاريخ الصلاحية":
         exp_d = datetime.strptime(b["expiry_date"], "%Y-%m-%d").date()
         days_left = (exp_d - today).days
 
-        # عرض التشغيلات التي صلاحيتها أقل من 3 شهور (90 يوم أو أقل)
         if days_left <= 90:
             if days_left <= 30:
                 row_bg = "#fee2e2"
@@ -886,7 +886,6 @@ elif selected_page == "🔮 التنبؤ بكفاية المخزون الرئي�
     with tf3:
         sel_fc_cat = st.selectbox("📂 التصنيف (محاليل / مستهلكات):", ["الكل", "محاليل وكواشف", "مستهلكات"], key="fc_filter_cat")
 
-    # دليل الألوان للتنبؤ بكفاية المخزون
     st.markdown("""
     <div style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; padding:10px 16px; margin-bottom:16px; font-weight:700; font-size:15px;">
         🎨 <b>دليل ألوان مدة الكفاية:</b> &nbsp;
@@ -918,7 +917,6 @@ elif selected_page == "🔮 التنبؤ بكفاية المخزون الرئي�
         if sel_fc_cat != "الكل" and cat_ar != sel_fc_cat:
             continue
 
-        # فلترة حسب الوحدة/الفرع المرتبط بالصنف
         if is_sub_only:
             if not rates_df.empty:
                 m_sub = rates_df[(rates_df["location_id"] == int(user_loc_id)) & (rates_df["item_id"] == iid)]
@@ -988,7 +986,101 @@ elif selected_page == "🔮 التنبؤ بكفاية المخزون الرئي�
         st.info("لا توجد بيانات مطابقة للفلاتر المختارة حالياً.")
 
 # =========================================================================
-# 4. المخزن الرئيسي
+# 4. شاشة مستقلة جديدة: شاشة الهدر (مقارنة المسحوب/المصروف بالنتائج الفعلية)
+# =========================================================================
+elif selected_page == "📉 شاشة الهدر":
+    render_page_header("📉 شاشة الهدر")
+
+    items_df = get_df("items")
+    locs_df = get_df("locations")
+    sub_locs_df = locs_df[locs_df["location_type"] != "main"] if not locs_df.empty else pd.DataFrame()
+
+    if items_df.empty:
+        st.warning("⚠️ برجاء إضافة الأصناف أولاً من صفحة '⚙️ التكويد'.")
+    else:
+        with st.form("wastage_calc_form"):
+            w1, w2 = st.columns(2)
+            with w1:
+                w_item_name = st.selectbox("🧪 اختر الصنف (مثال: ALT):", items_df["name"].tolist(), key="w_item_sel")
+                sel_w_item = items_df[items_df["name"] == w_item_name].iloc[0]
+                w_item_id = int(sel_w_item["id"])
+                w_sub_u = "اختبار" if sel_w_item["sub_unit_name"] == "تست" else sel_w_item["sub_unit_name"]
+
+                if role == "unit_supervisor" and user_loc_id != 1:
+                    w_loc_label = user_loc_name
+                    w_loc_id = int(user_loc_id)
+                    st.text_input("🏥 الوحدة / الفرع:", value=w_loc_label, disabled=True)
+                else:
+                    loc_opts = ["الكل (إجمالي المعمل)"] + (sub_locs_df["name"].tolist() if not sub_locs_df.empty else [])
+                    w_loc_label = st.selectbox("🏥 الوحدة / الفرع:", loc_opts, key="w_loc_sel")
+                    w_loc_id = None if w_loc_label == "الكل (إجمالي المعمل)" else int(sub_locs_df[sub_locs_df["name"] == w_loc_label].iloc[0]["id"])
+
+                actual_tests = st.number_input(
+                    f"🩺 عدد التيستات الفعلية التي خرجت للمرضى من سيستم التحاليل ({w_sub_u}):",
+                    min_value=0.0,
+                    step=10.0,
+                    key="w_actual_tests"
+                )
+
+            with w2:
+                p_col1, p_col2 = st.columns(2)
+                w_from = p_col1.date_input("📅 من تاريخ:", value=date.today().replace(month=1, day=1), key="w_from_date")
+                w_to = p_col2.date_input("📅 إلى تاريخ:", value=date.today(), key="w_to_date")
+
+                w_notes = st.text_input("📝 ملاحظات / سبب الهدر (معايرة، كنترول، إعادة تحليل، إلخ - اختياري):", key="w_notes_input")
+
+            # حساب الكمية المسحوبة/المصروفة خلال الفترة المحددة
+            cons_query = supabase.table("consumption_logs").select("tests_consumed, cost_incurred").eq("item_id", w_item_id).gte("consumed_at", str(w_from)).lte("consumed_at", str(w_to) + "T23:59:59")
+            if w_loc_id is not None:
+                cons_query = cons_query.eq("location_id", w_loc_id)
+            cons_rows = cons_query.execute().data or []
+            issued_qty = sum(float(c.get("tests_consumed") or 0) for c in cons_rows)
+
+            # حساب متوسط سعر الاختبار من الفواتير المسجلة للصنف
+            batches_rows = supabase.table("batches").select("unit_price_per_test").eq("item_id", w_item_id).execute().data or []
+            avg_unit_price = (sum(float(b.get("unit_price_per_test") or 0) for b in batches_rows) / len(batches_rows)) if batches_rows else 0.0
+
+            wastage_qty = issued_qty - float(actual_tests)
+            wastage_pct = (wastage_qty / issued_qty * 100.0) if issued_qty > 0 else 0.0
+            wastage_cost = max(0.0, wastage_qty) * avg_unit_price
+
+            st.markdown("---")
+            m1, m2, m3, m4 = st.columns(4)
+            with m1:
+                st.metric(f"📦 المسحوب/المصروف ({w_sub_u})", f"{issued_qty:,.0f}")
+            with m2:
+                st.metric(f"🩺 الفعلي بالسيستم ({w_sub_u})", f"{actual_tests:,.0f}")
+            with m3:
+                st.metric(f"📉 كمية الهدر ({w_sub_u})", f"{wastage_qty:,.0f}")
+            with m4:
+                st.metric("📊 نسبة الهدر %", f"{wastage_pct:.1f}%")
+
+            if wastage_cost > 0:
+                st.info(f"💰 التكلفة المالية التقديرية للهدر: **{wastage_cost:,.2f} ج.م** (بناءً على متوسط سعر الوحدة **{avg_unit_price:,.2f} ج.م**)")
+
+            save_w_btn = st.form_submit_button("💾 حفظ سجل الهدر وترحيله للتقارير", type="primary", use_container_width=True)
+            if save_w_btn:
+                if w_from > w_to:
+                    st.error("❌ تاريخ البداية يجب أن يكون قبل أو مساوياً لتاريخ النهاية.")
+                else:
+                    supabase.table("wastage_logs").insert({
+                        "item_id": w_item_id,
+                        "location_id": w_loc_id,
+                        "period_from": str(w_from),
+                        "period_to": str(w_to),
+                        "issued_qty": float(issued_qty),
+                        "actual_patient_tests": float(actual_tests),
+                        "wastage_qty": float(wastage_qty),
+                        "wastage_pct": float(round(wastage_pct, 2)),
+                        "wastage_cost": float(round(wastage_cost, 2)),
+                        "notes": w_notes.strip(),
+                        "created_by": int(user["id"])
+                    }).execute()
+                    st.success("✅ تم حفظ سجل الهدر بنجاح! يمكنك مراجعته في شاشة **📈 التقارير**.")
+                    st.rerun()
+
+# =========================================================================
+# 5. المخزن الرئيسي
 # =========================================================================
 elif selected_page == "🏢 المخزن الرئيسي":
     render_page_header("🏢 المخزن الرئيسي")
@@ -1081,7 +1173,7 @@ elif selected_page == "🏢 المخزن الرئيسي":
             render_styled_table(det_headers, det_rows)
 
 # =========================================================================
-# 5. الطلبيات
+# 6. الطلبيات
 # =========================================================================
 elif selected_page == "🛒 الطلبيات":
     render_page_header("🛒 الطلبيات")
@@ -1207,7 +1299,7 @@ elif selected_page == "🛒 الطلبيات":
         st.success("✅ لا يوجد عجز مطلوب شراؤه بناءً على الفلاتر والمدة المحددة!")
 
 # =========================================================================
-# 6. المخازن الفرعية
+# 7. المخازن الفرعية
 # =========================================================================
 elif selected_page == "🧪 المخازن الفرعية":
     render_page_header("🧪 المخازن الفرعية")
@@ -1334,7 +1426,7 @@ elif selected_page == "🧪 المخازن الفرعية":
                     st.rerun()
 
 # =========================================================================
-# 7. إضافة فاتورة
+# 8. إضافة فاتورة
 # =========================================================================
 elif selected_page == "📥 إضافة فاتورة":
     render_page_header("📥 إضافة فاتورة")
@@ -1396,7 +1488,7 @@ elif selected_page == "📥 إضافة فاتورة":
                     st.success(f"🎉 تم إضافة {kits_qty} {selected_item['unit_name']} ({total_tests} {sub_u}) بنجاح إلى المخزن الرئيسي!")
 
 # =========================================================================
-# 8. أذونات الصرف المعتمدة
+# 9. أذونات الصرف المعتمدة
 # =========================================================================
 elif selected_page.startswith("📦 أذونات الصرف المعتمدة"):
     render_page_header("📦 أذونات الصرف المعتمدة من المدير العام")
@@ -1458,7 +1550,7 @@ elif selected_page.startswith("📦 أذونات الصرف المعتمدة"):
                     st.rerun()
 
 # =========================================================================
-# 9. أذونات الصرف
+# 10. أذونات الصرف
 # =========================================================================
 elif selected_page == "🔄 أذونات الصرف":
     render_page_header("🔄 أذونات الصرف")
@@ -1582,7 +1674,7 @@ elif selected_page == "🔄 أذونات الصرف":
                                 st.rerun()
 
 # =========================================================================
-# 10. الموافقات
+# 11. الموافقات
 # =========================================================================
 elif selected_page == "✍️ الموافقات":
     render_page_header("✍️ الموافقات")
@@ -1712,12 +1804,16 @@ elif selected_page == "✍️ الموافقات":
                 st.rerun()
 
 # =========================================================================
-# 11. التقارير
+# 12. التقارير (يشمل تقرير الاستهلاك + مقارنة الأسعار + تقرير الهدر والفاقد)
 # =========================================================================
 elif selected_page == "📈 التقارير":
     render_page_header("📈 التقارير")
     
-    rep_t1, rep_t2 = st.tabs(["📊 تقرير الاستهلاك الكمي والمالي (حسب الفترة والشركة)", "💲 مقارنة وتطور أسعار الشركات الموردة"])
+    rep_t1, rep_t2, rep_t3 = st.tabs([
+        "📊 تقرير الاستهلاك الكمي والمالي",
+        "💲 مقارنة وتطور أسعار الشركات الموردة",
+        "📉 تقرير الهدر والفاقد"
+    ])
     
     with rep_t1:
         c1, c2 = st.columns(2)
@@ -1785,8 +1881,56 @@ elif selected_page == "📈 التقارير":
         else:
             st.info("لم يتم تسجيل فواتير توريد بعد.")
 
+    with rep_t3:
+        st.markdown("<h3 class='section-center-title'>📉 تقرير الهدر والفاقد المسجل</h3>", unsafe_allow_html=True)
+        try:
+            w_res = supabase.table("wastage_logs").select("*, items(name, sub_unit_name), locations(name)").order("id", desc=True).execute()
+            w_data = w_res.data or []
+        except Exception:
+            w_data = []
+
+        if not w_data:
+            st.info("لا توجد سجلات هدر محفوظة بعد. يمكنك تسجيلها من شاشة **📉 شاشة الهدر**.")
+        else:
+            w_items_opts = ["الكل"] + sorted(list({r["items"]["name"] for r in w_data if r.get("items")}))
+            sel_w_rep_item = st.selectbox("فلترة حسب الصنف:", w_items_opts, key="w_rep_item_sel")
+
+            w_rows_disp = []
+            w_colors_disp = []
+            for wr in w_data:
+                it_n = wr["items"]["name"] if wr.get("items") else "-"
+                if sel_w_rep_item != "الكل" and it_n != sel_w_rep_item:
+                    continue
+                loc_n = wr["locations"]["name"] if wr.get("locations") else "الكل (إجمالي المعمل)"
+                w_qty = float(wr.get("wastage_qty") or 0)
+                w_pct = float(wr.get("wastage_pct") or 0)
+                w_cost = float(wr.get("wastage_cost") or 0)
+
+                bg = "#fee2e2" if w_pct >= 15 else ("#fef9c3" if w_pct > 5 else "#ffffff")
+                w_rows_disp.append([
+                    (it_n, "font-weight:800;"),
+                    loc_n,
+                    f"{wr['period_from']} إلى {wr['period_to']}",
+                    f"{float(wr.get('issued_qty') or 0):,.0f}",
+                    f"{float(wr.get('actual_patient_tests') or 0):,.0f}",
+                    (f"{w_qty:,.0f}", "font-weight:800;"),
+                    (f"{w_pct:.1f}%", "font-weight:800;"),
+                    f"{w_cost:,.2f} ج.م",
+                    wr.get("notes") or "-"
+                ])
+                w_colors_disp.append(bg)
+
+            if w_rows_disp:
+                render_styled_table(
+                    ["الصنف", "الوحدة / الفرع", "الفترة", "المسحوب", "الفعلي بالسيستم", "كمية الهدر", "نسبة الهدر", "تكلفة الهدر", "ملاحظات"],
+                    w_rows_disp,
+                    row_bg_colors=w_colors_disp
+                )
+            else:
+                st.info("لا توجد سجلات مطابقة للفلتر المختار.")
+
 # =========================================================================
-# 12. التكويد
+# 13. التكويد
 # =========================================================================
 elif selected_page == "⚙️ التكويد":
     render_page_header("⚙️ التكويد")
@@ -2126,7 +2270,7 @@ elif selected_page == "⚙️ التكويد":
         df_to_styled_table(disp_locs)
 
 # =========================================================================
-# 13. إدارة المستخدمين والصلاحيات
+# 14. إدارة المستخدمين والصلاحيات
 # =========================================================================
 elif selected_page == "👥 إدارة المستخدمين والصلاحيات":
     render_page_header("👥 إدارة المستخدمين والصلاحيات")
