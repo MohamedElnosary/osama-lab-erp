@@ -65,7 +65,7 @@ st.markdown("""
         padding: 0 !important;
     }
 
-    /* رأس الجدول المدمج في شاشة الموافقات */
+    /* رأس الجدول المدمج وخلاياه (في الموافقات والمخازن الفرعية) */
     .tbl-hdr-cell {
         background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%);
         color: #ffffff;
@@ -786,7 +786,7 @@ elif selected_page == "🛒 الطلبيات":
         st.success("✅ لا يوجد عجز مطلوب شراؤه بناءً على الفلاتر والمدة المحددة!")
 
 # =========================================================================
-# 4. المخازن الفرعية
+# 4. المخازن الفرعية (نفس تصميم جدول الموافقات + فلتر الشركة الموردة)
 # =========================================================================
 elif selected_page == "🧪 المخازن الفرعية":
     render_page_header("🧪 المخازن الفرعية")
@@ -795,78 +795,121 @@ elif selected_page == "🧪 المخازن الفرعية":
     sub_locs = locs_df[locs_df["location_type"] != "main"]
     
     if role in ["chairman", "general_manager"]:
-        fc1, fc2, fc3 = st.columns(3)
+        # 4 فلاتر للمدير العام ورئيس مجلس الإدارة: الوحدة + التصنيف + اسم الصنف + الشركة الموردة
+        fc1, fc2, fc3, fc4 = st.columns(4)
         with fc1:
             loc_name = st.selectbox("🏥 الوحدة / الفرع:", sub_locs["name"].tolist(), key="sub_loc_gm")
             sel_loc_id = int(sub_locs[sub_locs["name"] == loc_name].iloc[0]["id"])
         with fc2:
-            sub_cat_filter = st.selectbox("📂 التصنيف (محاليل / مستهلكات):", ["الكل", "محاليل وكواشف", "مستهلكات"], key="sub_cat_gm")
+            sub_cat_filter = st.selectbox("📂 التصنيف:", ["الكل", "محاليل وكواشف", "مستهلكات"], key="sub_cat_gm")
     else:
+        # 3 فلاتر لمشرف الوحدة/الفرع: التصنيف + اسم الصنف + الشركة الموردة
         sel_loc_id = user_loc_id
         st.markdown(f"<h3 class='section-center-title'>🏥 مخزن: {user_loc_name}</h3>", unsafe_allow_html=True)
-        fc2, fc3 = st.columns(2)
+        fc2, fc3, fc4 = st.columns(3)
         with fc2:
-            sub_cat_filter = st.selectbox("📂 التصنيف (محاليل / مستهلكات):", ["الكل", "محاليل وكواشف", "مستهلكات"], key="sub_cat_sup")
+            sub_cat_filter = st.selectbox("📂 التصنيف:", ["الكل", "محاليل وكواشف", "مستهلكات"], key="sub_cat_sup")
 
     sub_inv = supabase.table("inventory").select("*, batches(*, items(id, name, category, unit_name, sub_unit_name), suppliers(id, name))").eq("location_id", sel_loc_id).gt("kits_available", 0).execute()
     raw_rows = sub_inv.data or []
 
+    # 1. تصفية بالتصنيف
     cat_filtered_rows = []
     for r in raw_rows:
         it_cat = "محاليل وكواشف" if r["batches"]["items"]["category"] == "reagent" else "مستهلكات"
         if sub_cat_filter == "الكل" or it_cat == sub_cat_filter:
             cat_filtered_rows.append(r)
 
+    # 2. فلتر اسم المحلول / المستهلك
     available_item_names = sorted(list({r["batches"]["items"]["name"] for r in cat_filtered_rows}))
     with fc3:
-        item_label_title = "🧪 اسم المحلول:" if sub_cat_filter == "محاليل وكواشف" else ("🧤 اسم المستهلك:" if sub_cat_filter == "مستهلكات" else "🔍 اسم المحلول / المستهلك:")
+        item_label_title = "🧪 اسم المحلول:" if sub_cat_filter == "محاليل وكواشف" else ("🧤 اسم المستهلك:" if sub_cat_filter == "مستهلكات" else "🔍 اسم الصنف:")
         sel_sub_item = st.selectbox(item_label_title, ["الكل"] + available_item_names, key="sub_item_filter")
 
-    final_sub_rows = [
+    item_filtered_rows = [
         r for r in cat_filtered_rows 
         if sel_sub_item == "الكل" or r["batches"]["items"]["name"] == sel_sub_item
+    ]
+
+    # 3. فلتر الشركة الموردة
+    available_sup_names = sorted(list({r["batches"]["suppliers"]["name"] for r in item_filtered_rows}))
+    with fc4:
+        sel_sub_sup = st.selectbox("🏭 الشركة الموردة:", ["الكل"] + available_sup_names, key="sub_sup_filter")
+
+    final_sub_rows = [
+        r for r in item_filtered_rows 
+        if sel_sub_sup == "الكل" or r["batches"]["suppliers"]["name"] == sel_sub_sup
     ]
 
     if not final_sub_rows:
         st.info("لا توجد أرصدة مطابقة للفلاتر المختارة في هذه الوحدة حالياً.")
     else:
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # جدول منظم من اليمين إلى اليسار مع خانة الكمية وزرار سحب للجهاز جنب كل صف
+        sub_col_widths = [1.4, 1.0, 1.1, 1.5, 1.0, 1.0, 0.9, 1.1]
+        sub_headers = [
+            "الصنف",
+            "التصنيف",
+            "الشركة الموردة",
+            "الرصيد المتاح",
+            "رقم التشغيلة",
+            "الصلاحية",
+            "الكمية",
+            "الإجراء"
+        ]
+        s_hdr_cols = st.columns(sub_col_widths)
+        for idx, h_title in enumerate(sub_headers):
+            s_hdr_cols[idx].markdown(f"<div class='tbl-hdr-cell'>{h_title}</div>", unsafe_allow_html=True)
+
         for row in final_sub_rows:
             b = row["batches"]
             it = b["items"]
             sup = b["suppliers"]
             sub_u = "اختبار" if it["sub_unit_name"] == "تست" else it["sub_unit_name"]
             cat_badge = "محاليل وكواشف" if it["category"] == "reagent" else "مستهلكات"
-            with st.container(border=True):
-                c1, c2, c3 = st.columns([3, 1, 1])
-                with c1:
-                    st.markdown(f"### {it['name']} ({cat_badge}) — شركة **{sup['name']}**")
-                    st.write(f"**الرصيد المتاح بالوحدة:** `{int(row['kits_available'])}` {it['unit_name']} ({int(row['tests_available'])} {sub_u}) | **رقم التشغيلة:** `{b['lot_number']}` | **الصلاحية:** `{b['expiry_date']}`")
-                with c2:
-                    kits_pull = st.number_input(f"سحب ({it['unit_name']})", min_value=1, max_value=int(row["kits_available"]), value=1, key=f"pull_qty_{row['id']}")
-                with c3:
-                    st.write("")
-                    st.write("")
-                    if st.button("🧪 سحب للجهاز", key=f"pull_btn_{row['id']}", type="primary"):
-                        tests_pulled = kits_pull * b["tests_per_kit"]
-                        cost_pulled = tests_pulled * float(b["unit_price_per_test"])
-                        
-                        supabase.table("inventory").update({
-                            "kits_available": float(row["kits_available"]) - kits_pull,
-                            "tests_available": float(row["tests_available"]) - tests_pulled
-                        }).eq("id", row["id"]).execute()
-                        
-                        supabase.table("consumption_logs").insert({
-                            "location_id": sel_loc_id,
-                            "batch_id": b["id"],
-                            "item_id": it["id"],
-                            "supplier_id": sup["id"],
-                            "kits_consumed": float(kits_pull),
-                            "tests_consumed": float(tests_pulled),
-                            "cost_incurred": float(cost_pulled),
-                            "logged_by": user["id"]
-                        }).execute()
-                        st.success(f"تم سحب {kits_pull} {it['unit_name']} ({tests_pulled} {sub_u}) وخصمها من رصيد الوحدة.")
-                        st.rerun()
+            avail_txt = f"{int(row['kits_available'])} {it['unit_name']} ({int(row['tests_available'])} {sub_u})"
+
+            s_row_cols = st.columns(sub_col_widths)
+            s_row_cols[0].markdown(f"<div class='tbl-row-cell' style='color:#0e4d92;'>{it['name']}</div>", unsafe_allow_html=True)
+            s_row_cols[1].markdown(f"<div class='tbl-row-cell'>{cat_badge}</div>", unsafe_allow_html=True)
+            s_row_cols[2].markdown(f"<div class='tbl-row-cell'>{sup['name']}</div>", unsafe_allow_html=True)
+            s_row_cols[3].markdown(f"<div class='tbl-row-cell' style='color:#0d9488;'>{avail_txt}</div>", unsafe_allow_html=True)
+            s_row_cols[4].markdown(f"<div class='tbl-row-cell' dir='ltr'>{b['lot_number']}</div>", unsafe_allow_html=True)
+            s_row_cols[5].markdown(f"<div class='tbl-row-cell' dir='ltr'>{b['expiry_date']}</div>", unsafe_allow_html=True)
+
+            with s_row_cols[6]:
+                kits_pull = st.number_input(
+                    f"كمية السحب ({it['unit_name']})",
+                    min_value=1,
+                    max_value=int(row["kits_available"]),
+                    value=1,
+                    label_visibility="collapsed",
+                    key=f"pull_qty_{row['id']}"
+                )
+
+            with s_row_cols[7]:
+                if st.button("🧪 سحب للجهاز", key=f"pull_btn_{row['id']}", type="primary", use_container_width=True):
+                    tests_pulled = kits_pull * b["tests_per_kit"]
+                    cost_pulled = tests_pulled * float(b["unit_price_per_test"])
+                    
+                    supabase.table("inventory").update({
+                        "kits_available": float(row["kits_available"]) - kits_pull,
+                        "tests_available": float(row["tests_available"]) - tests_pulled
+                    }).eq("id", row["id"]).execute()
+                    
+                    supabase.table("consumption_logs").insert({
+                        "location_id": sel_loc_id,
+                        "batch_id": b["id"],
+                        "item_id": it["id"],
+                        "supplier_id": sup["id"],
+                        "kits_consumed": float(kits_pull),
+                        "tests_consumed": float(tests_pulled),
+                        "cost_incurred": float(cost_pulled),
+                        "logged_by": user["id"]
+                    }).execute()
+                    st.success(f"تم سحب {kits_pull} {it['unit_name']} ({tests_pulled} {sub_u}) وخصمها من رصيد الوحدة.")
+                    st.rerun()
 
 # =========================================================================
 # 5. إضافة فاتورة
@@ -1102,7 +1145,7 @@ elif selected_page == "🔄 أذونات الصرف":
                                 st.rerun()
 
 # =========================================================================
-# 8. الموافقات (جدول متكامل: زر موافقة ورفض جنب كل صف + اعتماد الكل في الأسفل)
+# 8. الموافقات
 # =========================================================================
 elif selected_page == "✍️ الموافقات":
     render_page_header("✍️ الموافقات")
@@ -1154,7 +1197,6 @@ elif selected_page == "✍️ الموافقات":
         else:
             st.markdown("<br>", unsafe_allow_html=True)
 
-            # صف عناوين الجدول من اليمين إلى اليسار مع عمود الإجراء (موافقة / رفض)
             col_widths = [1.5, 1.2, 1.0, 1.4, 1.2, 1.4, 1.0, 1.0, 1.3]
             headers = [
                 "الجهة الطالبة",
@@ -1171,7 +1213,6 @@ elif selected_page == "✍️ الموافقات":
             for idx, h_title in enumerate(headers):
                 hdr_cols[idx].markdown(f"<div class='tbl-hdr-cell'>{h_title}</div>", unsafe_allow_html=True)
 
-            # صفوف الجدول وبجانب كل صف زرا الموافقة والرفض مباشرة
             for req in filtered_pending:
                 to_loc_id = int(req["to_location_id"])
                 it_id = int(req["item_id"])
@@ -1213,7 +1254,6 @@ elif selected_page == "✍️ الموافقات":
                             supabase.table("transfer_requests").update({"status": "rejected"}).eq("id", req["id"]).execute()
                             st.rerun()
 
-            # زر اعتماد الكل في الأسفل كما هو
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button(f"✅ موافقة واعتماد All ({len(filtered_pending)} طلب)", type="primary", use_container_width=True, key="approve_all_filtered_btn"):
                 ids_to_approve = [r["id"] for r in filtered_pending]
