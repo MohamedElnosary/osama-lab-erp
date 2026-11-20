@@ -764,7 +764,7 @@ user_loc_id = user["location_id"]
 user_loc_name = user["locations"]["name"] if user.get("locations") else "غير محدد"
 
 # =========================================================================
-# القائمة الجانبية + طي/فرد شاشات المخزن الرئيسي + تغيير كلمة المرور
+# القائمة الجانبية + عداد الموافقات للمدير العام + تغيير كلمة المرور
 # =========================================================================
 ROLE_LABELS = {
     "chairman": "رئيس مجلس الإدارة",
@@ -774,14 +774,7 @@ ROLE_LABELS = {
     "employee": "موظف"
 }
 
-MAIN_STORE_SUB_PAGES = [
-    "↳ ⏳ تنبيهات تاريخ الصلاحية",
-    "↳ 🔮 التنبؤ بكفاية المخزون الرئيسي",
-    "↳ 🛒 الطلبيات",
-    "↳ 📥 إضافة فاتورة"
-]
-
-def get_default_pages_for_role(r_name: str, badge_txt: str = "") -> list:
+def get_default_pages_for_role(r_name: str, store_badge_txt: str = "", gm_badge_txt: str = "") -> list:
     if r_name == "main_storekeeper":
         return [
             "🏢 المخزن الرئيسي",
@@ -789,7 +782,7 @@ def get_default_pages_for_role(r_name: str, badge_txt: str = "") -> list:
             "↳ 🔮 التنبؤ بكفاية المخزون الرئيسي",
             "↳ 🛒 الطلبيات",
             "↳ 📥 إضافة فاتورة",
-            f"📦 أذونات الصرف المعتمدة{badge_txt}",
+            f"📦 أذونات الصرف المعتمدة{store_badge_txt}",
             "⚙️ التكويد",
             "📉 حساب الهدر"
         ]
@@ -803,7 +796,7 @@ def get_default_pages_for_role(r_name: str, badge_txt: str = "") -> list:
             "↳ 📥 إضافة فاتورة",
             "🧪 المخازن الفرعية",
             "🔄 أذونات الصرف",
-            "✍️ الموافقات",
+            f"✍️ الموافقات{gm_badge_txt}",
             "📈 التقارير",
             "⚙️ التكويد",
             "📉 حساب الهدر",
@@ -843,6 +836,8 @@ def normalize_page_key(p_str: str) -> str:
     clean = str(p_str).strip()
     if clean.startswith("📦 أذونات الصرف المعتمدة"):
         return "📦 أذونات الصرف المعتمدة"
+    if clean.startswith("✍️ الموافقات"):
+        return "✍️ الموافقات"
     if clean in ["⏳ تنبيهات تاريخ الصلاحية", "🔮 التنبؤ بكفاية المخزون الرئيسي", "🛒 الطلبيات", "📥 إضافة فاتورة"]:
         return f"↳ {clean}"
     if clean == "📉 شاشة الهدر":
@@ -853,20 +848,39 @@ def parse_custom_pages(raw_val) -> list:
     if not raw_val:
         return []
     if isinstance(raw_val, list):
-        return [str(x) for x in raw_val if x]
+        return [normalize_page_key(x) for x in raw_val if x]
     try:
         parsed = json.loads(raw_val)
         if isinstance(parsed, list):
-            return [str(x) for x in parsed if x]
+            return [normalize_page_key(x) for x in parsed if x]
     except Exception:
         pass
-    return [p.strip() for p in str(raw_val).split("||") if p.strip()]
+    return [normalize_page_key(p.strip()) for p in str(raw_val).split("||") if p.strip()]
+
+def get_effective_pages_for_user(u_obj: dict, store_badge_txt: str = "", gm_badge_txt: str = "") -> list:
+    r_name = u_obj.get("role", "employee")
+    default_list = get_default_pages_for_role(r_name, store_badge_txt, gm_badge_txt)
+    custom_list = [p for p in parse_custom_pages(u_obj.get("allowed_pages")) if p in ALL_SYSTEM_PAGES]
+
+    if not custom_list:
+        return default_list
+
+    custom_set = set(custom_list)
+    result = []
+    for p in default_list:
+        norm_p = normalize_page_key(p)
+        if norm_p in custom_set:
+            result.append(p)
+    for p in ALL_SYSTEM_PAGES:
+        lbl = f"📦 أذونات الصرف المعتمدة{store_badge_txt}" if (p == "📦 أذونات الصرف المعتمدة" and store_badge_txt) else (
+            f"✍️ الموافقات{gm_badge_txt}" if (p == "✍️ الموافقات" and gm_badge_txt) else p
+        )
+        if p in custom_set and lbl not in result:
+            result.append(lbl)
+    return result if result else default_list
 
 if "show_change_pass" not in st.session_state:
     st.session_state.show_change_pass = False
-
-if "expand_main_store_menu" not in st.session_state:
-    st.session_state.expand_main_store_menu = True
 
 with st.sidebar:
     st.markdown("<h2 style='text-align: center !important; color: #0e4d92; font-weight: 800; margin-bottom: 12px;'>🧬 معامل أ.د/ أسامة عبدالمتعال</h2>", unsafe_allow_html=True)
@@ -887,36 +901,10 @@ with st.sidebar:
     approved_count_res = supabase.table("transfer_requests").select("id", count="exact").eq("status", "approved_ready_to_issue").execute()
     approved_badge = f" ({approved_count_res.count})" if (approved_count_res.count and approved_count_res.count > 0) else ""
 
-    custom_pages = parse_custom_pages(user.get("allowed_pages"))
-    if custom_pages:
-        allowed_set = set()
-        for cp in custom_pages:
-            norm_cp = normalize_page_key(cp)
-            if norm_cp == "📦 أذونات الصرف المعتمدة" and approved_badge:
-                allowed_set.add(f"📦 أذونات الصرف المعتمدة{approved_badge}")
-            elif norm_cp in ALL_SYSTEM_PAGES:
-                allowed_set.add(norm_cp)
-        base_menu = [p for p in get_default_pages_for_role(role, approved_badge) if p in allowed_set]
-        for p in ALL_SYSTEM_PAGES:
-            lbl = f"📦 أذونات الصرف المعتمدة{approved_badge}" if (p == "📦 أذونات الصرف المعتمدة" and approved_badge) else p
-            if lbl in allowed_set and lbl not in base_menu:
-                base_menu.append(lbl)
-        if not base_menu:
-            base_menu = get_default_pages_for_role(role, approved_badge)
-    else:
-        base_menu = get_default_pages_for_role(role, approved_badge)
+    pending_gm_count_res = supabase.table("transfer_requests").select("id", count="exact").eq("status", "pending_gm").execute()
+    pending_gm_badge = f" ({pending_gm_count_res.count})" if (pending_gm_count_res.count and pending_gm_count_res.count > 0) else ""
 
-    has_main_store_subs = any(p in MAIN_STORE_SUB_PAGES for p in base_menu)
-    if has_main_store_subs:
-        arrow_icon = "▾" if st.session_state.expand_main_store_menu else "▸"
-        if st.button(f"{arrow_icon} شاشات المخزن الرئيسي ({'إخفاء' if st.session_state.expand_main_store_menu else 'عرض'})", key="toggle_main_store_subs_btn"):
-            st.session_state.expand_main_store_menu = not st.session_state.expand_main_store_menu
-            st.rerun()
-
-    if st.session_state.expand_main_store_menu:
-        menu_options = base_menu
-    else:
-        menu_options = [p for p in base_menu if p not in MAIN_STORE_SUB_PAGES]
+    menu_options = get_effective_pages_for_user(user, approved_badge, pending_gm_badge)
 
     selected_raw = st.radio("القائمة الرئيسية", menu_options, label_visibility="collapsed")
     selected_page = normalize_page_key(selected_raw)
@@ -1267,7 +1255,7 @@ elif selected_page == "↳ 🔮 التنبؤ بكفاية المخزون الر�
         st.info("لا توجد بيانات مطابقة للفلاتر المختارة حالياً.")
 
 # =========================================================================
-# 4. شاشة: حساب الهدر (بعد التكويد وقبل صلاحيات المستخدمين)
+# 4. شاشة: حساب الهدر
 # =========================================================================
 elif selected_page == "📉 حساب الهدر":
     render_page_header("📉 حساب الهدر")
@@ -1383,7 +1371,7 @@ elif selected_page == "📉 حساب الهدر":
                         st.rerun()
 
 # =========================================================================
-# 5. المخزن الرئيسي (3 تبويبات: تجميعي + تفصيلي + استرجاع/إعدام/تحديث جرد)
+# 5. المخزن الرئيسي
 # =========================================================================
 elif selected_page == "🏢 المخزن الرئيسي":
     render_page_header("🏢 المخزن الرئيسي")
@@ -1668,7 +1656,7 @@ elif selected_page == "↳ 🛒 الطلبيات":
         st.success("✅ لا يوجد عجز مطلوب شراؤه بناءً على الفلاتر والمدة المحددة!")
 
 # =========================================================================
-# 7. شاشة: إضافة فاتورة + تعديل فاتورة (Edit بصلاحية، بدون حفظ بالـ Enter)
+# 7. شاشة: إضافة فاتورة + تعديل فاتورة
 # =========================================================================
 elif selected_page == "↳ 📥 إضافة فاتورة":
     render_page_header("📥 إضافة فاتورة")
@@ -2824,7 +2812,8 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
             if not m_l.empty:
                 cur_u_loc_name = m_l.iloc[0]["name"]
 
-        cur_u_pages = [normalize_page_key(p) for p in parse_custom_pages(cur_u.get("allowed_pages")) if normalize_page_key(p) in ALL_SYSTEM_PAGES]
+        # عرض الشاشات الحالية الظاهرة للمستخدم (سواء مخصصة أو الديفولت الخاصة بدوره)
+        active_pages_for_u = [normalize_page_key(p) for p in get_effective_pages_for_user(cur_u) if normalize_page_key(p) in ALL_SYSTEM_PAGES]
 
         with st.container(border=True):
             ec1, ec2 = st.columns(2)
@@ -2843,11 +2832,32 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
             )
 
             upd_pages = st.multiselect(
-                "☑️ الشاشات المسموح ظهورها لهذا المستخدم (فارغ = حسب الصلاحية الافتراضية):",
+                "☑️ الشاشات الظاهرة والمسموحة للمستخدم (يمكنك إضافة أو حذف أي شاشة مباشرة):",
                 options=ALL_SYSTEM_PAGES,
-                default=cur_u_pages,
+                default=active_pages_for_u,
                 key=f"u_pgs_{cur_u_id}"
             )
+
+            # عرض الشاشات الحالية مع زر ناقص (-) لحذف أي شاشة مباشرة
+            if active_pages_for_u:
+                st.markdown("**الشاشات الحالية للمستخدم (اضغط ➖ لحذف شاشة):**")
+                p_cols = st.columns(min(len(active_pages_for_u), 3))
+                for idx_p, pg_item in enumerate(active_pages_for_u):
+                    with p_cols[idx_p % 3]:
+                        c_lbl, c_rem = st.columns([3, 1])
+                        with c_lbl:
+                            st.write(f"• {pg_item}")
+                        with c_rem:
+                            if st.button("➖", key=f"rem_pg_{cur_u_id}_{idx_p}", help=f"حذف {pg_item}"):
+                                remaining_pages = [x for x in active_pages_for_u if x != pg_item]
+                                pages_json_rem = json.dumps(remaining_pages, ensure_ascii=False)
+                                try:
+                                    supabase.table("users").update({"allowed_pages": pages_json_rem}).eq("id", cur_u_id).execute()
+                                    if int(user["id"]) == cur_u_id:
+                                        st.session_state.user["allowed_pages"] = pages_json_rem
+                                    st.rerun()
+                                except Exception:
+                                    st.error("تعذر تحديث الصلاحيات.")
 
             reset_pass_val = st.text_input("إعادة تعيين كلمة مرور جديدة للمستخدم (اختياري - اتركه فارغاً للإبقاء على الحالية)", type="password", key=f"u_np_{cur_u_id}")
 
@@ -2865,7 +2875,7 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
                     if reset_pass_val.strip():
                         upd_payload["password_hash"] = hash_password(reset_pass_val.strip())
 
-                    pages_json_str = json.dumps(upd_pages, ensure_ascii=False) if upd_pages else None
+                    pages_json_str = json.dumps(upd_pages, ensure_ascii=False)
                     try:
                         supabase.table("users").update({**upd_payload, "allowed_pages": pages_json_str}).eq("id", cur_u_id).execute()
                     except Exception:
@@ -2887,8 +2897,8 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
 
         disp_u_rows = []
         for _, ur in users_df.iterrows():
-            u_pages_list = parse_custom_pages(ur.get("allowed_pages"))
-            pages_summary = "، ".join(u_pages_list) if u_pages_list else "افتراضي حسب الصلاحية"
+            u_pages_list = get_effective_pages_for_user(ur.to_dict())
+            pages_summary = "، ".join(u_pages_list) if u_pages_list else "-"
             act_txt = ("نشط (Active) ✅", "color:#166534; font-weight:800;") if ur.get("is_active", True) else ("غير نشط (Inactive) ❌", "color:#991b1b; font-weight:800;")
             disp_u_rows.append([
                 str(ur["id"]),
