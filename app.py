@@ -18,7 +18,7 @@ except Exception:
     PDF_AVAILABLE = False
 
 # =========================================================================
-# إعدادات الصفحة والتنسيق العام (خط موحد 14px + تبويبات أزرار 16px Bold + لمسة جمالية)
+# إعدادات الصفحة والتنسيق العام (هوية بصرية موحدة مريحة للعين وعالية الوضوح)
 # =========================================================================
 st.set_page_config(
     page_title="معامل أ.د/ أسامة عبدالمتعال",
@@ -32,39 +32,22 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
 
 html, body, .stApp, [data-testid="stMain"], .main .block-container {
-    font-family: 'Cairo', 'Times New Roman', sans-serif !important;
-    font-size: 14px !important;
+    font-family: 'Cairo', sans-serif !important;
     direction: rtl !important;
     text-align: right !important;
     background: linear-gradient(160deg, #f1f5f9 0%, #e0f2fe 50%, #f8fafc 100%) !important;
     color: #0f172a !important;
 }
 
-.main .block-container {
-    max-width: 1180px !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-    padding-top: 1.5rem !important;
-    padding-bottom: 2.5rem !important;
-}
-
 [data-testid="stDataFrame"], [data-testid="stDataFrame"] > div {
     direction: rtl !important;
     text-align: right !important;
-    font-size: 14px !important;
 }
 
-p, span, label, h4, h5, h6, div[data-testid="stMarkdownContainer"],
+p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
 [data-testid="stWidgetLabel"], [data-testid="stAlert"], .stSelectbox, .stMultiSelect, .stTextInput, .stNumberInput, .stDateInput {
-    font-size: 14px !important;
     direction: rtl !important;
     text-align: right !important;
-}
-
-[data-testid="stWidgetLabel"] p {
-    color: #0f172a !important;
-    font-weight: 700 !important;
-    font-size: 14px !important;
 }
 
 .page-header-banner {
@@ -73,15 +56,15 @@ p, span, label, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     border-right: 7px solid #0e4d92;
     border-left: 7px solid #0284c7;
     border-radius: 18px;
-    padding: 14px 24px;
-    margin-bottom: 20px;
+    padding: 16px 24px;
+    margin-bottom: 22px;
     box-shadow: 0 6px 20px rgba(14, 77, 146, 0.08);
     text-align: center !important;
 }
 .page-header-banner h1 {
     text-align: center !important;
     color: #0e4d92 !important;
-    font-size: 28px !important;
+    font-size: 32px !important;
     font-weight: 800 !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -99,9 +82,9 @@ p, span, label, h4, h5, h6, div[data-testid="stMarkdownContainer"],
 .unified-tbl thead th {
     background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%);
     color: #ffffff;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 800;
-    padding: 10px 8px;
+    padding: 11px 8px;
     text-align: center !important;
     border: none;
 }
@@ -116,9 +99,9 @@ p, span, label, h4, h5, h6, div[data-testid="stMarkdownContainer"],
 .unified-tbl tbody td {
     background-color: #ffffff;
     color: #0f172a;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 700;
-    padding: 10px 8px;
+    padding: 11px 8px;
     text-align: center !important;
     border-top: 1px solid #cbd5e1;
     border-bottom: 1px solid #cbd5e1;
@@ -142,9 +125,9 @@ p, span, label, h4, h5, h6, div[data-testid="stMarkdownContainer"],
 .tbl-hdr-cell {
     background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%);
     color: #ffffff;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 800;
-    padding: 9px 6px;
+    padding: 10px 6px;
     border-radius: 8px;
     text-align: center !important;
     margin-bottom: 6px;
@@ -153,12 +136,12 @@ p, span, label, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     background-color: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 8px;
-    padding: 9px 6px;
-    font-size: 14px;
+    padding: 10px 6px;
+    font-size: 15px;
     font-weight: 700;
     color: #0f172a;
     text-align: center !important;
-    min-height: 44px;
+    min-height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -166,51 +149,28 @@ p, span, label, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     word-break: break-word;
 }
 
-/* التبويبات كأزرار واضحة ومميزة بحجم خط 16px Bold */
 .stTabs [data-baseweb="tab-list"] {
-    gap: 12px !important;
-    flex-wrap: wrap !important;
+    gap: 10px;
     direction: rtl !important;
-    justify-content: center !important;
     background-color: #ffffff;
-    padding: 10px 12px;
-    border-radius: 16px;
+    padding: 8px;
+    border-radius: 14px;
     border: 1.5px solid #cbd5e1;
-    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.05);
-    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 .stTabs [data-baseweb="tab"] {
-    background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
-    color: #0f172a;
-    border-radius: 12px;
-    padding: 10px 22px;
-    font-weight: 800 !important;
-    font-size: 16px !important;
-    border: 1.5px solid #94a3b8;
-    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
-    transition: all 0.2s ease;
-}
-.stTabs [data-baseweb="tab"] p {
-    font-weight: 800 !important;
-    font-size: 16px !important;
-    margin: 0 !important;
-}
-.stTabs [data-baseweb="tab"]:hover {
-    border-color: #0284c7;
-    background: #f0f9ff;
-    transform: translateY(-1px);
+    background-color: #f1f5f9;
+    color: #1e293b;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-weight: 700;
+    font-size: 16px;
+    border: 1px solid transparent;
 }
 .stTabs [aria-selected="true"] {
     background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%) !important;
     color: #ffffff !important;
-    border-color: #0e4d92 !important;
-    box-shadow: 0 5px 14px rgba(14, 77, 146, 0.28) !important;
-}
-.stTabs [aria-selected="true"] p {
-    color: #ffffff !important;
-}
-.stTabs [data-baseweb="tab-highlight"] {
-    display: none !important;
+    box-shadow: 0 4px 10px rgba(14, 77, 146, 0.2);
 }
 
 [data-testid="stForm"], [data-testid="stExpander"], div[data-testid="stVerticalBlockBorderWrapper"] {
@@ -218,7 +178,6 @@ p, span, label, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     border: 1.5px solid #cbd5e1 !important;
     border-radius: 16px !important;
     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05) !important;
-    padding: 8px 12px !important;
 }
 
 [data-baseweb="input"], [data-baseweb="select"] > div {
@@ -226,7 +185,6 @@ p, span, label, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     border: 1.5px solid #94a3b8 !important;
     border-radius: 10px !important;
     color: #0f172a !important;
-    font-size: 14px !important;
 }
 [data-baseweb="input"]:focus-within, [data-baseweb="select"] > div:focus-within {
     border-color: #0284c7 !important;
@@ -238,9 +196,9 @@ p, span, label, h4, h5, h6, div[data-testid="stMarkdownContainer"],
 [data-testid="stDownloadButton"] > button {
     border-radius: 10px !important;
     font-weight: 700 !important;
-    font-size: 14px !important;
-    padding: 7px 18px !important;
-    min-height: 38px !important;
+    font-size: 15px !important;
+    padding: 8px 18px !important;
+    min-height: 40px !important;
 }
 
 .stButton > button[kind="primary"], [data-testid="stFormSubmitButton"] > button[kind="primary"],
@@ -270,7 +228,7 @@ p, span, label, h4, h5, h6, div[data-testid="stMarkdownContainer"],
 .kpi-card {
     background: #ffffff;
     border-radius: 16px;
-    padding: 18px 14px;
+    padding: 20px 16px;
     text-align: center !important;
     box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
     border: 1.5px solid #cbd5e1;
@@ -282,14 +240,14 @@ p, span, label, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     box-shadow: 0 12px 24px rgba(14, 77, 146, 0.14);
 }
 .kpi-title {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 700;
     color: #334155;
     margin-bottom: 8px;
     text-align: center !important;
 }
 .kpi-value {
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 800;
     text-align: center !important;
 }
@@ -297,17 +255,15 @@ p, span, label, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     text-align: center !important;
     color: #0e4d92 !important;
     font-weight: 800 !important;
-    font-size: 16px !important;
-    margin: 10px auto 16px auto !important;
-    background: linear-gradient(90deg, #f0f9ff 0%, #e0f2fe 100%);
-    padding: 10px 18px;
+    margin: 12px 0 16px 0 !important;
+    background: #ffffff;
+    padding: 10px;
     border-radius: 12px;
-    border: 1.5px solid #bae6fd;
-    max-width: 780px;
+    border: 1px solid #bae6fd;
 }
 
 /* =====================================================================
-   تنسيق القائمة الجانبية الاحترافي (كروت تنقل عريضة وخط واضح)
+   تنسيق القائمة الجانبية الاحترافي (كروت تنقل عريضة وخط كبير)
    ===================================================================== */
 [data-testid="stSidebar"] {
     background: linear-gradient(180deg, #ffffff 0%, #e0f2fe 100%) !important;
@@ -337,7 +293,7 @@ p, span, label, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     transform: translateX(-3px);
 }
 [data-testid="stSidebar"] div[role="radiogroup"] label p {
-    font-size: 14px !important;
+    font-size: 16px !important;
     font-weight: 700 !important;
     color: #0f172a !important;
     line-height: 1.4 !important;
@@ -360,7 +316,7 @@ p, span, label, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     color: #b91c1c !important;
     border: 1.5px solid #fca5a5 !important;
     border-radius: 12px !important;
-    font-size: 14px !important;
+    font-size: 16px !important;
     font-weight: 700 !important;
     padding: 9px 12px !important;
 }
@@ -543,6 +499,7 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 def log_user_action(actor: dict, action_type: str, page_name: str, details: str, location_name: str = ""):
+    """تسجيل كل أكشن يأخذه أي مستخدم في جدول audit_logs"""
     if not actor:
         return
     try:
@@ -768,7 +725,7 @@ if st.session_state.user is None:
         [data-testid="stForm"] [data-testid="stWidgetLabel"] p {
             text-align: center !important;
             width: 100% !important;
-            font-size: 16px !important;
+            font-size: 19px !important;
             font-weight: 800 !important;
             color: #0e4d92 !important;
             margin-bottom: 6px !important;
@@ -786,7 +743,7 @@ if st.session_state.user is None:
         }
         [data-testid="stForm"] input {
             text-align: center !important;
-            font-size: 16px !important;
+            font-size: 18px !important;
             font-weight: 700 !important;
             padding: 10px !important;
             color: #0f172a !important;
@@ -798,7 +755,7 @@ if st.session_state.user is None:
         [data-testid="stForm"] button {
             background: linear-gradient(135deg, #0e4d92 0%, #0284c7 50%, #06b6d4 100%) !important;
             color: #ffffff !important;
-            font-size: 18px !important;
+            font-size: 20px !important;
             font-weight: 800 !important;
             border-radius: 14px !important;
             padding: 11px 0 !important;
@@ -968,7 +925,7 @@ with st.sidebar:
                 padding: 14px 16px;
                 border-radius: 14px;
                 text-align: center !important;
-                font-size: 18px;
+                font-size: 20px;
                 font-weight: 700;
                 box-shadow: 0 4px 10px rgba(14, 77, 146, 0.2);
                 margin-bottom: 14px;'>
@@ -1075,7 +1032,7 @@ if selected_page == "📊 الرئيسية":
     col_a, col_b = st.columns(2)
     
     with col_a:
-        st.markdown("<div class='section-center-title'>🔥 أكثر الأصناف سحباً (حسب التكلفة المالية)</div>", unsafe_allow_html=True)
+        st.markdown("<h3 class='section-center-title'>🔥 أكثر الأصناف سحباً (حسب التكلفة المالية)</h3>", unsafe_allow_html=True)
         if recent_cons:
             df_c = pd.DataFrame([{
                 "الصنف": c['items']['name'],
@@ -1090,7 +1047,7 @@ if selected_page == "📊 الرئيسية":
             st.info("لا توجد حركات سحب مسجلة خلال هذه الفترة لعرض الرسم البياني.")
 
     with col_b:
-        st.markdown("<div class='section-center-title'>🏭 توزيع قيمة المخزون حسب الشركات الموردة</div>", unsafe_allow_html=True)
+        st.markdown("<h3 class='section-center-title'>🏭 توزيع قيمة المخزون حسب الشركات الموردة</h3>", unsafe_allow_html=True)
         if filtered_inv:
             df_s = pd.DataFrame([{
                 "الشركة": r["batches"]["suppliers"]["name"],
@@ -1119,7 +1076,7 @@ elif selected_page == "↳ ⏳ تنبيهات تاريخ الصلاحية":
 
     if role in ["unit_supervisor", "employee"] and user_loc_id != 1:
         scoped_rows = [r for r in all_inv_rows if int(r["location_id"]) == int(user_loc_id)]
-        st.markdown(f"<div class='section-center-title'>🏥 صلاحيات مخزن: {user_loc_name}</div>", unsafe_allow_html=True)
+        st.markdown(f"<h3 class='section-center-title'>🏥 صلاحيات مخزن: {user_loc_name}</h3>", unsafe_allow_html=True)
         ef2, ef3 = st.columns(2)
         sel_exp_loc = user_loc_name
     else:
@@ -1137,7 +1094,7 @@ elif selected_page == "↳ ⏳ تنبيهات تاريخ الصلاحية":
         sel_exp_cat = st.selectbox("📂 التصنيف (محاليل / مستهلكات):", ["الكل", "محاليل وكواشف", "مستهلكات"], key="exp_filter_cat")
 
     st.markdown("""
-    <div style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; padding:10px 16px; margin-bottom:16px; font-weight:700; font-size:14px; text-align:center;">
+    <div style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; padding:10px 16px; margin-bottom:16px; font-weight:700; font-size:15px;">
         🎨 <b>دليل ألوان الصلاحية:</b> &nbsp;
         <span style="background:#fee2e2; color:#991b1b; padding:3px 10px; border-radius:6px; border:1px solid #fca5a5;">🟥 أقل من شهر (≤ 30 يوم)</span> &nbsp;
         <span style="background:#fef9c3; color:#854d0e; padding:3px 10px; border-radius:6px; border:1px solid #fde047;">🟨 أقل من شهرين (31 - 60 يوم)</span> &nbsp;
@@ -1236,7 +1193,7 @@ elif selected_page == "↳ 🔮 التنبؤ بكفاية المخزون الر�
         sel_fc_cat = st.selectbox("📂 التصنيف (محاليل / مستهلكات):", ["الكل", "محاليل وكواشف", "مستهلكات"], key="fc_filter_cat")
 
     st.markdown("""
-    <div style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; padding:10px 16px; margin-bottom:16px; font-weight:700; font-size:14px; text-align:center;">
+    <div style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; padding:10px 16px; margin-bottom:16px; font-weight:700; font-size:15px;">
         🎨 <b>دليل ألوان مدة الكفاية:</b> &nbsp;
         <span style="background:#fee2e2; color:#991b1b; padding:3px 10px; border-radius:6px; border:1px solid #fca5a5;">🟥 تحت الشهر (&lt; 1 شهر - حرج)</span> &nbsp;
         <span style="background:#fef9c3; color:#854d0e; padding:3px 10px; border-radius:6px; border:1px solid #fde047;">🟨 تحت 3 شهور (1 إلى &lt; 3 شهور - تنبيه)</span> &nbsp;
@@ -1348,7 +1305,6 @@ elif selected_page == "📉 حساب الهدر":
         st.warning("⚠️ برجاء إضافة الأصناف أولاً من صفحة '⚙️ التكويد'.")
     else:
         with st.container(border=True):
-            st.markdown("<div class='section-center-title'>📊 نموذج حساب ونسبة الهدر</div>", unsafe_allow_html=True)
             w1, w2 = st.columns(2)
             with w1:
                 w_item_name = st.selectbox("🧪 اختر الصنف (مثال: ALT):", items_df["name"].tolist(), key="w_item_sel")
@@ -1471,13 +1427,13 @@ elif selected_page == "🏢 المخزن الرئيسي":
         st.warning("المخزن الرئيسي فارغ حالياً. اذهب إلى '↳ 📥 إضافة فاتورة' لإضافة الأرصدة.")
     else:
         tab1, tab2, tab3 = st.tabs([
-            "📊 العرض التجميعي الذكي",
-            "🏢 العرض التفصيلي",
+            "📊 العرض التجميعي الذكي (كل الشركات معاً + مدة الكفاية)",
+            "🏢 العرض التفصيلي (مفصول حسب الشركة ورقم التشغيلة)",
             "🛠️ إجراءات المخزون (استرجاع / إعدام / تحديث الجرد)"
         ])
         
         with tab1:
-            st.markdown("<div class='section-center-title'>إجمالي الرصيد الكلي لكل تحليل/صنف ومدة كفايته</div>", unsafe_allow_html=True)
+            st.markdown("<h3 class='section-center-title'>إجمالي الرصيد الكلي لكل تحليل/صنف ومدة كفايته</h3>", unsafe_allow_html=True)
             agg = {}
             for r in rows:
                 it = r["batches"]["items"]
@@ -1519,7 +1475,7 @@ elif selected_page == "🏢 المخزن الرئيسي":
             render_styled_table(agg_headers, agg_list)
 
         with tab2:
-            st.markdown("<div class='section-center-title'>تفاصيل الأرصدة حسب الشركة الموردة ورقم التشغيلة</div>", unsafe_allow_html=True)
+            st.markdown("<h3 class='section-center-title'>تفاصيل الأرصدة حسب الشركة الموردة ورقم التشغيلة</h3>", unsafe_allow_html=True)
             det_rows = []
             sorted_rows = sorted(rows, key=lambda x: (x["batches"]["items"]["name"], x["batches"]["expiry_date"]))
             filter_item = st.selectbox("فلترة باسم الصنف (اختياري):", ["الكل"] + sorted(list({r["batches"]["items"]["name"] for r in rows})))
@@ -1556,7 +1512,7 @@ elif selected_page == "🏢 المخزن الرئيسي":
             render_styled_table(det_headers, det_rows)
 
         with tab3:
-            st.markdown("<div class='section-center-title'>🛠️ استرجاع للمورد / إعدام / تحديث الجرد الدوري</div>", unsafe_allow_html=True)
+            st.markdown("<h3 class='section-center-title'>🛠️ استرجاع للمورد / إعدام / تحديث الجرد الدوري</h3>", unsafe_allow_html=True)
             inv_choice_labels = [
                 f"{r['batches']['items']['name']} — شركة: {r['batches']['suppliers']['name']} | تشغيلة: {r['batches']['lot_number']} | المتاح: {int(r['kits_available'])} {r['batches']['items']['unit_name']} | الصلاحية: {r['batches']['expiry_date']}"
                 for r in rows
@@ -1777,7 +1733,6 @@ elif selected_page == "↳ 📥 إضافة فاتورة":
         st.warning("⚠️ برجاء إضافة الأصناف والشركات أولاً من صفحة '⚙️ التكويد'.")
     else:
         with st.container(border=True):
-            st.markdown("<div class='section-center-title'>📝 تسجيل فاتورة توريد جديدة</div>", unsafe_allow_html=True)
             col1, col2 = st.columns(2)
             with col1:
                 item_choice = st.selectbox("اختر الصنف / التحليل", items_df["name"].tolist(), key="add_inv_item_sel")
@@ -1836,7 +1791,7 @@ elif selected_page == "↳ 📥 إضافة فاتورة":
         can_edit_invoice = (role in ["chairman", "general_manager"]) or ("↳ 📥 إضافة فاتورة" in parse_custom_pages(user.get("allowed_pages")))
         if can_edit_invoice:
             st.divider()
-            st.markdown("<div class='section-center-title'>✏️ تعديل فاتورة سابقة (Edit)</div>", unsafe_allow_html=True)
+            st.subheader("✏️ تعديل فاتورة سابقة (Edit)")
             batches_all = supabase.table("batches").select("*, items(name, unit_name, sub_unit_name), suppliers(name)").order("id", desc=True).limit(50).execute().data or []
             if batches_all:
                 b_labels = [
@@ -1924,7 +1879,7 @@ elif selected_page == "🧪 المخازن الفرعية":
     else:
         sel_loc_id = user_loc_id
         loc_name = user_loc_name
-        st.markdown(f"<div class='section-center-title'>🏥 مخزن: {user_loc_name}</div>", unsafe_allow_html=True)
+        st.markdown(f"<h3 class='section-center-title'>🏥 مخزن: {user_loc_name}</h3>", unsafe_allow_html=True)
         fc2, fc3, fc4 = st.columns(3)
         with fc2:
             sub_cat_filter = st.selectbox("📂 التصنيف:", ["الكل", "محاليل وكواشف", "مستهلكات"], key="sub_cat_sup")
@@ -2054,10 +2009,10 @@ elif selected_page == "📦 أذونات الصرف المعتمدة":
 elif selected_page == "🔄 أذونات الصرف":
     render_page_header("🔄 أذونات الصرف")
     
-    t1, t2 = st.tabs(["📝 إنشاء إذن صرف جديد", "📦 أذونات الصرف المعتمدة"])
+    t1, t2 = st.tabs(["📝 إنشاء إذن صرف جديد (للوحدات والفروع)", "📦 أذونات الصرف المعتمدة (طباعة PDF وتنفيذ الصرف)"])
     
     with t1:
-        st.markdown("<div class='section-center-title'>طلب صرف من المخزن الرئيسي</div>", unsafe_allow_html=True)
+        st.subheader("طلب صرف من المخزن الرئيسي")
         locs_df = get_df("locations")
         sub_locs = locs_df[locs_df["location_type"] != "main"]
         items_df = get_df("items")
@@ -2067,80 +2022,79 @@ elif selected_page == "🔄 أذونات الصرف":
         if sub_locs.empty or items_df.empty:
             st.warning("تأكد من وجود وحدات/فروع وأصناف مسجلة.")
         else:
-            with st.container(border=True):
-                c1, c2 = st.columns(2)
-                with c1:
-                    if role in ["unit_supervisor", "employee"] and user_loc_id != 1:
-                        target_loc_id = user_loc_id
-                        target_loc_name = user_loc_name
-                        st.text_input("الوحدة / الفرع الطالب", value=user_loc_name, disabled=True)
-                    else:
-                        loc_choice = st.selectbox("اختر الوحدة / الفرع الطالب", sub_locs["name"].tolist())
-                        target_loc_name = loc_choice
-                        target_loc_id = int(sub_locs[sub_locs["name"] == loc_choice].iloc[0]["id"])
-                    
-                    if not rates_df.empty and "location_id" in rates_df.columns:
-                        linked_item_ids = rates_df[rates_df["location_id"] == target_loc_id]["item_id"].tolist()
-                        if linked_item_ids:
-                            filtered_items_df = items_df[items_df["id"].isin(linked_item_ids)]
-                        else:
-                            filtered_items_df = items_df
+            c1, c2 = st.columns(2)
+            with c1:
+                if role in ["unit_supervisor", "employee"] and user_loc_id != 1:
+                    target_loc_id = user_loc_id
+                    target_loc_name = user_loc_name
+                    st.text_input("الوحدة / الفرع الطالب", value=user_loc_name, disabled=True)
+                else:
+                    loc_choice = st.selectbox("اختر الوحدة / الفرع الطالب", sub_locs["name"].tolist())
+                    target_loc_name = loc_choice
+                    target_loc_id = int(sub_locs[sub_locs["name"] == loc_choice].iloc[0]["id"])
+                
+                if not rates_df.empty and "location_id" in rates_df.columns:
+                    linked_item_ids = rates_df[rates_df["location_id"] == target_loc_id]["item_id"].tolist()
+                    if linked_item_ids:
+                        filtered_items_df = items_df[items_df["id"].isin(linked_item_ids)]
                     else:
                         filtered_items_df = items_df
+                else:
+                    filtered_items_df = items_df
 
-                    item_choice = st.selectbox("اختر الصنف المطلوب (المخصص لهذه الوحدة/الفرع)", filtered_items_df["name"].tolist(), key="req_item")
-                    sel_item = filtered_items_df[filtered_items_df["name"] == item_choice].iloc[0]
-                    sub_u = "اختبار" if sel_item["sub_unit_name"] == "تست" else sel_item["sub_unit_name"]
-                    
-                    sup_choice = st.selectbox("اختر الشركة الموردة", suppliers_df["name"].tolist(), key="req_sup")
-                    sel_sup = suppliers_df[suppliers_df["name"] == sup_choice].iloc[0]
+                item_choice = st.selectbox("اختر الصنف المطلوب (المخصص لهذه الوحدة/الفرع)", filtered_items_df["name"].tolist(), key="req_item")
+                sel_item = filtered_items_df[filtered_items_df["name"] == item_choice].iloc[0]
+                sub_u = "اختبار" if sel_item["sub_unit_name"] == "تست" else sel_item["sub_unit_name"]
+                
+                sup_choice = st.selectbox("اختر الشركة الموردة", suppliers_df["name"].tolist(), key="req_sup")
+                sel_sup = suppliers_df[suppliers_df["name"] == sup_choice].iloc[0]
 
-                with c2:
-                    rate_res = supabase.table("location_consumption_rates").select("monthly_tests_rate").eq("location_id", target_loc_id).eq("item_id", int(sel_item["id"])).execute()
-                    unit_monthly_rate = float(rate_res.data[0]["monthly_tests_rate"]) if rate_res.data else 0.0
+            with c2:
+                rate_res = supabase.table("location_consumption_rates").select("monthly_tests_rate").eq("location_id", target_loc_id).eq("item_id", int(sel_item["id"])).execute()
+                unit_monthly_rate = float(rate_res.data[0]["monthly_tests_rate"]) if rate_res.data else 0.0
+                
+                months_needed = st.number_input("المدة المطلوب تغطيتها (بالشهور)", min_value=0.5, max_value=12.0, value=1.0, step=0.5)
+                
+                avail_batches = supabase.table("inventory").select("*, batches!inner(*)").eq("location_id", 1).eq("batches.item_id", int(sel_item["id"])).eq("batches.supplier_id", int(sel_sup["id"])).gt("kits_available", 0).execute()
+                
+                if avail_batches.data:
+                    sorted_b = sorted(avail_batches.data, key=lambda x: x["batches"]["expiry_date"])
+                    best_b = sorted_b[0]
+                    tpk = best_b["batches"]["tests_per_kit"]
+                    suggested_kits = max(1, round((unit_monthly_rate * months_needed) / tpk)) if unit_monthly_rate > 0 else 1
                     
-                    months_needed = st.number_input("المدة المطلوب تغطيتها (بالشهور)", min_value=0.5, max_value=12.0, value=1.0, step=0.5)
+                    st.success(f"💡 ترشيح النظام (الأقرب صلاحية): **تشغيلة {best_b['batches']['lot_number']}** (تنتهي في `{best_b['batches']['expiry_date']}`) | المتاح بالمخزن الرئيسي: **{int(best_b['kits_available'])}** {sel_item['unit_name']}")
+                    if unit_monthly_rate > 0:
+                        st.caption(f"بناءً على استهلاك هذه الوحدة/الفرع ({unit_monthly_rate} {sub_u}/شهر)، الكمية المقترحة لـ {months_needed} شهر هي **{suggested_kits}** {sel_item['unit_name']}.")
                     
-                    avail_batches = supabase.table("inventory").select("*, batches!inner(*)").eq("location_id", 1).eq("batches.item_id", int(sel_item["id"])).eq("batches.supplier_id", int(sel_sup["id"])).gt("kits_available", 0).execute()
+                    kits_to_req = st.number_input(f"عدد الـ ({sel_item['unit_name']}) المطلوب صرفها", min_value=1, max_value=int(best_b["kits_available"]), value=min(suggested_kits, int(best_b["kits_available"])))
                     
-                    if avail_batches.data:
-                        sorted_b = sorted(avail_batches.data, key=lambda x: x["batches"]["expiry_date"])
-                        best_b = sorted_b[0]
-                        tpk = best_b["batches"]["tests_per_kit"]
-                        suggested_kits = max(1, round((unit_monthly_rate * months_needed) / tpk)) if unit_monthly_rate > 0 else 1
-                        
-                        st.success(f"💡 ترشيح النظام (الأقرب صلاحية): **تشغيلة {best_b['batches']['lot_number']}** (تنتهي في `{best_b['batches']['expiry_date']}`) | المتاح بالمخزن الرئيسي: **{int(best_b['kits_available'])}** {sel_item['unit_name']}")
-                        if unit_monthly_rate > 0:
-                            st.caption(f"بناءً على استهلاك هذه الوحدة/الفرع ({unit_monthly_rate} {sub_u}/شهر)، الكمية المقترحة لـ {months_needed} شهر هي **{suggested_kits}** {sel_item['unit_name']}.")
-                        
-                        kits_to_req = st.number_input(f"عدد الـ ({sel_item['unit_name']}) المطلوب صرفها", min_value=1, max_value=int(best_b["kits_available"]), value=min(suggested_kits, int(best_b["kits_available"])))
-                        
-                        if st.button("🚀 إرسال الإذن إلى قسم الموافقات", type="primary"):
-                            supabase.table("transfer_requests").insert({
-                                "from_location_id": 1,
-                                "to_location_id": target_loc_id,
-                                "item_id": int(sel_item["id"]),
-                                "supplier_id": int(sel_sup["id"]),
-                                "batch_id": best_b["batch_id"],
-                                "months_requested": float(months_needed),
-                                "kits_requested": int(kits_to_req),
-                                "tests_requested": int(kits_to_req * tpk),
-                                "status": "pending_gm",
-                                "requested_by": user["id"]
-                            }).execute()
-                            log_user_action(
-                                user,
-                                "إرسال طلب صرف",
-                                "أذونات الصرف",
-                                f"طلب صرف {kits_to_req} {sel_item['unit_name']} ({kits_to_req * tpk} {sub_u}) من صنف ({sel_item['name']}) شركة ({sel_sup['name']}) تشغيلة ({best_b['batches']['lot_number']})",
-                                target_loc_name
-                            )
-                            st.success("✅ تم إرسال إذن الصرف بنجاح وهو الآن في صفحة '✍️ الموافقات'!")
-                    else:
-                        st.error(f"❌ لا يوجد رصيد متاح في المخزن الرئيسي من ({sel_item['name']}) لشركة ({sel_sup['name']}).")
+                    if st.button("🚀 إرسال الإذن إلى قسم الموافقات", type="primary"):
+                        supabase.table("transfer_requests").insert({
+                            "from_location_id": 1,
+                            "to_location_id": target_loc_id,
+                            "item_id": int(sel_item["id"]),
+                            "supplier_id": int(sel_sup["id"]),
+                            "batch_id": best_b["batch_id"],
+                            "months_requested": float(months_needed),
+                            "kits_requested": int(kits_to_req),
+                            "tests_requested": int(kits_to_req * tpk),
+                            "status": "pending_gm",
+                            "requested_by": user["id"]
+                        }).execute()
+                        log_user_action(
+                            user,
+                            "إرسال طلب صرف",
+                            "أذونات الصرف",
+                            f"طلب صرف {kits_to_req} {sel_item['unit_name']} ({kits_to_req * tpk} {sub_u}) من صنف ({sel_item['name']}) شركة ({sel_sup['name']}) تشغيلة ({best_b['batches']['lot_number']})",
+                            target_loc_name
+                        )
+                        st.success("✅ تم إرسال إذن الصرف بنجاح وهو الآن في صفحة '✍️ الموافقات'!")
+                else:
+                    st.error(f"❌ لا يوجد رصيد متاح في المخزن الرئيسي من ({sel_item['name']}) لشركة ({sel_sup['name']}).")
 
     with t2:
-        st.markdown("<div class='section-center-title'>أذونات الصرف المعتمدة وجاهزة للطباعة والصرف</div>", unsafe_allow_html=True)
+        st.subheader("أذونات الصرف المعتمدة وجاهزة للطباعة والصرف")
         render_approved_requests_storekeeper_view(key_prefix="tr_tab2_app")
 
 # =========================================================================
@@ -2295,21 +2249,21 @@ elif selected_page == "✍️ الموافقات":
                 st.rerun()
 
 # =========================================================================
-# 12. التقارير
+# 12. التقارير (يشمل التقرير الكمي والمالي + الاستهلاك + الأسعار + الهدر + سجل تتبع المستخدمين)
 # =========================================================================
 elif selected_page == "📈 التقارير":
     render_page_header("📈 التقارير")
     
     rep_t1, rep_t2, rep_t3, rep_t4, rep_t5 = st.tabs([
         "💰 التقرير الكمي والمالي (حسب الصنف)",
-        "📊 تقرير الاستهلاك (بالصنف والشركة)",
-        "💲 مقارنة أسعار الشركات",
+        "📊 تقرير الاستهلاك الكمي والمالي (بالصنف والشركة)",
+        "💲 مقارنة وتطور أسعار الشركات الموردة",
         "📉 تقرير الهدر والفاقد",
-        "🕵️ سجل حركات المستخدمين"
+        "🕵️ سجل حركات المستخدمين (Audit Log)"
     ])
 
     with rep_t1:
-        st.markdown("<div class='section-center-title'>💰 التقرير الكمي والمالي (إجمالي الكمية والتكلفة ومتوسط سعر الاختبار لكل صنف)</div>", unsafe_allow_html=True)
+        st.markdown("<h3 class='section-center-title'>💰 التقرير الكمي والمالي (إجمالي الكمية والتكلفة ومتوسط سعر الاختبار لكل صنف)</h3>", unsafe_allow_html=True)
         fc_d1, fc_d2, fc_d3 = st.columns(3)
         start_fin = fc_d1.date_input("من تاريخ", value=date.today().replace(day=1), key="fin_from_d")
         end_fin = fc_d2.date_input("إلى تاريخ", value=date.today(), key="fin_to_d")
@@ -2401,7 +2355,7 @@ elif selected_page == "📈 التقارير":
                 df_l = df_l[df_l["الشركة الموردة"] == sel_cons_sup]
 
             if not df_l.empty:
-                st.markdown("<div class='section-center-title'>ملخص الاستهلاك مقسماً بالصنف والشركة الموردة</div>", unsafe_allow_html=True)
+                st.markdown("<h3 class='section-center-title'>ملخص الاستهلاك مقسماً بالصنف والشركة الموردة</h3>", unsafe_allow_html=True)
                 summary = df_l.groupby(["الصنف", "الشركة الموردة"], as_index=False).agg(
                     إجمالي_الكمية=("الكمية المستهلكة", "sum"),
                     إجمالي_التكلفة_جنيه=("التكلفة الإجمالية (ج.م)", "sum")
@@ -2441,7 +2395,7 @@ elif selected_page == "📈 التقارير":
             st.info("لا توجد حركات استهلاك مسجلة في هذه الفترة.")
 
     with rep_t3:
-        st.markdown("<div class='section-center-title'>تتبع ومقارنة أسعار التوريد عبر الزمن بين الشركات</div>", unsafe_allow_html=True)
+        st.markdown("<h3 class='section-center-title'>تتبع ومقارنة أسعار التوريد عبر الزمن بين الشركات</h3>", unsafe_allow_html=True)
         batches_res = supabase.table("batches").select("*, items(name, variant), suppliers(name)").order("received_date").execute()
         if batches_res.data:
             df_b = pd.DataFrame([{
@@ -2480,7 +2434,7 @@ elif selected_page == "📈 التقارير":
             st.info("لم يتم تسجيل فواتير توريد بعد.")
 
     with rep_t4:
-        st.markdown("<div class='section-center-title'>📉 تقرير الهدر والفاقد المسجل</div>", unsafe_allow_html=True)
+        st.markdown("<h3 class='section-center-title'>📉 تقرير الهدر والفاقد المسجل</h3>", unsafe_allow_html=True)
         try:
             w_res = supabase.table("wastage_logs").select("*, items(name, sub_unit_name), locations(name)").order("id", desc=True).execute()
             w_data = w_res.data or []
@@ -2581,7 +2535,7 @@ elif selected_page == "📈 التقارير":
                 st.info("لا توجد سجلات مطابقة للفلاتر المختارة.")
 
     with rep_t5:
-        st.markdown("<div class='section-center-title'>🕵️ سجل حركات المستخدمين (من قام بأي أكشن ومتى)</div>", unsafe_allow_html=True)
+        st.markdown("<h3 class='section-center-title'>🕵️ سجل حركات المستخدمين (من قام بأي أكشن ومتى)</h3>", unsafe_allow_html=True)
         try:
             a_res = supabase.table("audit_logs").select("*").order("id", desc=True).limit(200).execute()
             a_data = a_res.data or []
@@ -2651,7 +2605,7 @@ elif selected_page == "⚙️ التكويد":
     render_page_header("⚙️ التكويد")
     
     st1, st2, st3 = st.tabs([
-        "🧪 الأصناف ومعدلات استهلاكها", 
+        "🧪 الأصناف ومعدلات استهلاكها لكل فرع/وحدة", 
         "🏢 الشركات الموردة", 
         "🏥 المخازن الفرعية والوحدات"
     ])
@@ -2664,7 +2618,6 @@ elif selected_page == "⚙️ التكويد":
 
         with st.expander("➕ إضافة صنف جديد وربطه بالمخازن الفرعية والوحدات", expanded=True):
             with st.container(border=True):
-                st.markdown("<div class='section-center-title'>➕ إضافة صنف جديد</div>", unsafe_allow_html=True)
                 c1, c2 = st.columns(2)
                 i_name = c1.text_input("اسم الصنف / التحليل (مثال: ALT أو Gloves أو Syringe)", key="new_i_name")
                 i_cat = c2.selectbox("التصنيف", ["reagent", "consumable"], format_func=lambda x: "محاليل وكواشف (Reagent)" if x == "reagent" else "مستهلكات طبية (Consumable)", key="new_i_cat")
@@ -2686,7 +2639,7 @@ elif selected_page == "⚙️ التكويد":
 
                 unit_rates_input = {}
                 if effective_locs:
-                    st.markdown(f"<div class='section-center-title'>📏 معدل الاستهلاك الشهري (بالـ {i_sub}) لكل مخزن / وحدة</div>", unsafe_allow_html=True)
+                    st.markdown(f"#### 📏 حدد معدل الاستهلاك الشهري (بالـ **{i_sub}**) لكل مخزن فرعي / وحدة مختارة:")
                     rate_cols = st.columns(2)
                     for idx, loc_n in enumerate(effective_locs):
                         with rate_cols[idx % 2]:
@@ -2737,7 +2690,7 @@ elif selected_page == "⚙️ التكويد":
                             st.error("هذا الصنف مسجل بالفعل. يمكنك تعديله من القسم بالأسفل.")
 
         st.divider()
-        st.markdown("<div class='section-center-title'>✏️ تعديل أو حذف صنف مسجل</div>", unsafe_allow_html=True)
+        st.subheader("✏️ تعديل أو حذف صنف مسجل (وتعديل المخازن ومعدلات الاستهلاك)")
         items_df = get_df("items")
         rates_df = get_df("location_consumption_rates")
 
@@ -2778,7 +2731,7 @@ elif selected_page == "⚙️ التكويد":
 
                 edit_unit_rates = {}
                 if edit_effective_locs:
-                    st.markdown(f"<div class='section-center-title'>📏 تعديل معدل الاستهلاك الشهري (بالـ {new_i_sub})</div>", unsafe_allow_html=True)
+                    st.markdown(f"#### 📏 تعديل معدل الاستهلاك الشهري (بالـ **{new_i_sub}**) لكل مخزن / وحدة:")
                     er_cols = st.columns(2)
                     for idx, loc_n in enumerate(edit_effective_locs):
                         with er_cols[idx % 2]:
@@ -2840,7 +2793,7 @@ elif selected_page == "⚙️ التكويد":
                             st.success("🗑️ تم حذف الصنف بنجاح!")
                             st.rerun()
 
-            st.markdown("<div class='section-center-title'>📋 قائمة الأصناف والمخازن المرتبطة بها حالياً</div>", unsafe_allow_html=True)
+            st.markdown("#### 📋 قائمة الأصناف والمخازن المرتبطة بها حالياً")
             summary_items_list = []
             for _, it_row in items_df.iterrows():
                 iid = int(it_row["id"])
@@ -2866,7 +2819,6 @@ elif selected_page == "⚙️ التكويد":
     with st2:
         with st.expander("➕ إضافة شركة موردة جديدة", expanded=True):
             with st.container(border=True):
-                st.markdown("<div class='section-center-title'>➕ إضافة شركة موردة</div>", unsafe_allow_html=True)
                 s_name = st.text_input("اسم الشركة الموردة (مثال: Roche, Abbott, Mindray)", key="add_s_name_inp")
                 s_contact = st.text_input("بيانات التواصل / المندوب (اختياري)", key="add_s_contact_inp")
                 if st.button("➕ إضافة الشركة", type="primary", key="add_s_submit_btn"):
@@ -2882,7 +2834,7 @@ elif selected_page == "⚙️ التكويد":
                         st.error("برجاء إدخال اسم الشركة.")
 
         st.divider()
-        st.markdown("<div class='section-center-title'>✏️ تعديل أو حذف شركة موردة</div>", unsafe_allow_html=True)
+        st.subheader("✏️ تعديل أو حذف شركة موردة")
         sups_df = get_df("suppliers")
         if not sups_df.empty:
             edit_sup_choice = st.selectbox("اختر الشركة المراد تعديلها أو حذفها:", sups_df["name"].tolist(), key="edit_sup_sel")
@@ -2922,7 +2874,7 @@ elif selected_page == "⚙️ التكويد":
             df_to_styled_table(disp_sups)
 
     with st3:
-        st.markdown("<div class='section-center-title'>🏥 إدارة المخازن الفرعية ووحدات المعمل</div>", unsafe_allow_html=True)
+        st.subheader("🏥 إدارة المخازن الفرعية ووحدات المعمل")
         LOC_TYPE_LABELS = {
             "branch": "فرع خارجي (مخزن فرعي)",
             "unit": "وحدة داخلية بالمعمل",
@@ -2954,7 +2906,7 @@ elif selected_page == "⚙️ التكويد":
         locs_df = get_df("locations")
         sub_locs_edit = locs_df[locs_df["location_type"] != "main"]
         if not sub_locs_edit.empty:
-            st.markdown("<div class='section-center-title'>✏️ تعديل أو حذف مخزن فرعي / وحدة</div>", unsafe_allow_html=True)
+            st.subheader("✏️ تعديل أو حذف مخزن فرعي / وحدة")
             sel_loc_edit = st.selectbox("اختر الفرع أو الوحدة:", sub_locs_edit["name"].tolist(), key="edit_loc_sel")
             cur_loc = sub_locs_edit[sub_locs_edit["name"] == sel_loc_edit].iloc[0]
             
@@ -3005,7 +2957,6 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
 
     with st.expander("➕ إنشاء حساب مستخدم جديد", expanded=True):
         with st.container(border=True):
-            st.markdown("<div class='section-center-title'>➕ إنشاء حساب مستخدم جديد</div>", unsafe_allow_html=True)
             c1, c2 = st.columns(2)
             f_name = c1.text_input("الاسم الكامل للموظف", key="new_u_fn")
             u_name = c2.text_input("اسم الدخول (Username بالإنجليزية)", key="new_u_un")
@@ -3054,7 +3005,7 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
                     st.error("برجاء ملء جميع الحقول.")
 
     st.divider()
-    st.markdown("<div class='section-center-title'>✏️ تعديل مستخدم (الاسم، الصلاحية، الحالة، والشاشات المسموحة)</div>", unsafe_allow_html=True)
+    st.subheader("✏️ تعديل مستخدم (الاسم، الصلاحية، الحالة Active/Inactive، والشاشات المسموحة)")
     all_users_res = supabase.table("users").select("*").order("id").execute().data or []
     if all_users_res:
         user_choice_labels = [f"{u['full_name']} ({u['username']})" for u in all_users_res]
@@ -3149,7 +3100,7 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
                     st.success("✅ تم حفظ تعديلات المستخدم والصلاحيات بنجاح!")
                     st.rerun()
 
-    st.markdown("<div class='section-center-title'>قائمة المستخدمين الحاليين</div>", unsafe_allow_html=True)
+    st.subheader("قائمة المستخدمين الحاليين")
     users_df = get_df("users")
     if not users_df.empty:
         loc_map_id = {}
