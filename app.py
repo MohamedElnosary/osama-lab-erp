@@ -18,7 +18,7 @@ except Exception:
     PDF_AVAILABLE = False
 
 # =========================================================================
-# إعدادات الصفحة والتنسيق العام (هوية بصرية موحدة + PWA + استجابة الموبايل)
+# إعدادات الصفحة والتنسيق العام (هوية بصرية موحدة + PWA + إصلاح عرض الموبايل)
 # =========================================================================
 st.set_page_config(
     page_title="معامل أ.د/ أسامة عبدالمتعال",
@@ -33,7 +33,7 @@ st.markdown("""
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="معامل أسامة">
-<link rel="manifest" href="app/static/manifest.json">
+<link rel="manifest" href="./app/static/manifest.json">
 <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2966/2966327.png">
 
 <style>
@@ -41,10 +41,12 @@ st.markdown("""
 
 html, body, .stApp, [data-testid="stMain"], .main .block-container {
     font-family: 'Cairo', sans-serif !important;
+    font-size: 14px !important;
     direction: rtl !important;
     text-align: right !important;
     background: linear-gradient(160deg, #f1f5f9 0%, #e0f2fe 50%, #f8fafc 100%) !important;
     color: #0f172a !important;
+    overflow-x: hidden !important;
 }
 
 [data-testid="stDataFrame"], [data-testid="stDataFrame"] > div {
@@ -56,6 +58,7 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
 [data-testid="stWidgetLabel"], [data-testid="stAlert"], .stSelectbox, .stMultiSelect, .stTextInput, .stNumberInput, .stDateInput {
     direction: rtl !important;
     text-align: right !important;
+    font-size: 14px !important;
 }
 
 .page-header-banner {
@@ -64,15 +67,15 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     border-right: 7px solid #0e4d92;
     border-left: 7px solid #0284c7;
     border-radius: 18px;
-    padding: 16px 24px;
-    margin-bottom: 22px;
+    padding: 16px 20px;
+    margin-bottom: 18px;
     box-shadow: 0 6px 20px rgba(14, 77, 146, 0.08);
     text-align: center !important;
 }
 .page-header-banner h1 {
     text-align: center !important;
     color: #0e4d92 !important;
-    font-size: 32px !important;
+    font-size: 28px !important;
     font-weight: 800 !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -90,9 +93,9 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
 .unified-tbl thead th {
     background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%);
     color: #ffffff;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 800;
-    padding: 11px 8px;
+    padding: 10px 8px;
     text-align: center !important;
     border: none;
 }
@@ -107,9 +110,9 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
 .unified-tbl tbody td {
     background-color: #ffffff;
     color: #0f172a;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
-    padding: 11px 8px;
+    padding: 10px 8px;
     text-align: center !important;
     border-top: 1px solid #cbd5e1;
     border-bottom: 1px solid #cbd5e1;
@@ -133,7 +136,7 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
 .tbl-hdr-cell {
     background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%);
     color: #ffffff;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 800;
     padding: 10px 6px;
     border-radius: 8px;
@@ -145,11 +148,11 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     border: 1px solid #cbd5e1;
     border-radius: 8px;
     padding: 10px 6px;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
     color: #0f172a;
     text-align: center !important;
-    min-height: 48px;
+    min-height: 46px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -159,7 +162,7 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
 
 /* التبويبات كأزرار واضحة وكبيرة وبخط عريض في كل صفحات البرنامج */
 .stTabs [data-baseweb="tab-list"] {
-    gap: 12px !important;
+    gap: 10px !important;
     flex-wrap: wrap !important;
     direction: rtl !important;
     background-color: #ffffff;
@@ -173,16 +176,16 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
     color: #0f172a;
     border-radius: 12px;
-    padding: 11px 22px;
+    padding: 10px 18px;
     font-weight: 800 !important;
-    font-size: 17px !important;
+    font-size: 16px !important;
     border: 1.5px solid #94a3b8;
     box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
     transition: all 0.2s ease;
 }
 .stTabs [data-baseweb="tab"] p {
     font-weight: 800 !important;
-    font-size: 17px !important;
+    font-size: 16px !important;
     margin: 0 !important;
 }
 .stTabs [data-baseweb="tab"]:hover {
@@ -211,9 +214,12 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
 }
 
 [data-baseweb="input"], [data-baseweb="select"] > div {
-    background-color: #f8fafc !important;
+    background-color: #ffffff !important;
     border: 1.5px solid #94a3b8 !important;
     border-radius: 10px !important;
+    color: #0f172a !important;
+}
+[data-baseweb="select"] span, [data-baseweb="select"] div, [data-baseweb="input"] input {
     color: #0f172a !important;
 }
 [data-baseweb="input"]:focus-within, [data-baseweb="select"] > div:focus-within {
@@ -226,8 +232,8 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
 [data-testid="stDownloadButton"] > button {
     border-radius: 10px !important;
     font-weight: 700 !important;
-    font-size: 15px !important;
-    padding: 8px 18px !important;
+    font-size: 14px !important;
+    padding: 8px 16px !important;
     min-height: 40px !important;
 }
 
@@ -270,14 +276,14 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     box-shadow: 0 12px 24px rgba(14, 77, 146, 0.14);
 }
 .kpi-title {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 700;
     color: #334155;
     margin-bottom: 8px;
     text-align: center !important;
 }
 .kpi-value {
-    font-size: 28px;
+    font-size: 26px;
     font-weight: 800;
     text-align: center !important;
 }
@@ -323,7 +329,7 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     transform: translateX(-3px);
 }
 [data-testid="stSidebar"] div[role="radiogroup"] label p {
-    font-size: 16px !important;
+    font-size: 15px !important;
     font-weight: 700 !important;
     color: #0f172a !important;
     line-height: 1.4 !important;
@@ -346,7 +352,7 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     color: #b91c1c !important;
     border: 1.5px solid #fca5a5 !important;
     border-radius: 12px !important;
-    font-size: 16px !important;
+    font-size: 15px !important;
     font-weight: 700 !important;
     padding: 9px 12px !important;
 }
@@ -355,19 +361,23 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     color: #ffffff !important;
 }
 
-/* تحسينات عرض شاشات الموبايل (أقل من 768px) */
+/* إصلاحات عرض الموبايل لتجنب التداخل أو العمود الجانبي أو قص النص */
 @media (max-width: 768px) {
     .main .block-container {
-        padding-left: 0.7rem !important;
-        padding-right: 0.7rem !important;
-        padding-top: 1rem !important;
+        padding-left: 0.65rem !important;
+        padding-right: 0.65rem !important;
+        padding-top: 0.9rem !important;
+        max-width: 100% !important;
     }
     .page-header-banner {
         padding: 12px 14px !important;
         border-radius: 14px !important;
+        border-right-width: 5px !important;
+        border-left-width: 5px !important;
     }
     .page-header-banner h1 {
-        font-size: 22px !important;
+        font-size: 20px !important;
+        line-height: 1.4 !important;
     }
     .stTabs [data-baseweb="tab"] {
         font-size: 14px !important;
@@ -378,8 +388,14 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     }
     .unified-tbl {
         display: block !important;
+        width: 100% !important;
         overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    .unified-tbl thead th, .unified-tbl tbody td {
         white-space: nowrap !important;
+        font-size: 13px !important;
+        padding: 8px 10px !important;
     }
     .kpi-value {
         font-size: 22px !important;
