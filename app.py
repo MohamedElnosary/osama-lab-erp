@@ -198,16 +198,23 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
 }
 
+/* أزرار أنيقة ومتوسطة الحجم في الشاشات الرئيسية */
+.stButton > button, [data-testid="stFormSubmitButton"] > button,
+[data-testid="stDownloadButton"] > button {
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+    padding: 7px 18px !important;
+    min-height: 38px !important;
+    width: auto !important;
+}
+
 .stButton > button[kind="primary"], [data-testid="stFormSubmitButton"] > button[kind="primary"],
 [data-testid="stDownloadButton"] > button[kind="primary"] {
     background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%) !important;
     color: #ffffff !important;
     border: none !important;
-    border-radius: 10px !important;
-    font-weight: 700 !important;
-    font-size: 16px !important;
-    padding: 10px 16px !important;
-    box-shadow: 0 3px 10px rgba(14, 77, 146, 0.2) !important;
+    box-shadow: 0 3px 8px rgba(14, 77, 146, 0.18) !important;
 }
 .stButton > button[kind="primary"]:hover, [data-testid="stFormSubmitButton"] > button[kind="primary"]:hover,
 [data-testid="stDownloadButton"] > button[kind="primary"]:hover {
@@ -219,11 +226,7 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     background: linear-gradient(90deg, #b91c1c 0%, #dc2626 100%) !important;
     color: #ffffff !important;
     border: none !important;
-    border-radius: 10px !important;
-    font-weight: 700 !important;
-    font-size: 16px !important;
-    padding: 10px 16px !important;
-    box-shadow: 0 3px 10px rgba(185, 28, 28, 0.22) !important;
+    box-shadow: 0 3px 8px rgba(185, 28, 28, 0.2) !important;
 }
 [data-testid="stDownloadButton"] > button[kind="secondary"]:hover {
     background: linear-gradient(90deg, #991b1b 0%, #b91c1c 100%) !important;
@@ -284,7 +287,7 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     background-color: #ffffff !important;
     border: 1.5px solid #cbd5e1 !important;
     border-radius: 12px !important;
-    padding: 11px 15px !important;
+    padding: 10px 14px !important;
     margin: 0 !important;
     width: 100% !important;
     transition: all 0.2s ease-in-out !important;
@@ -298,7 +301,7 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     transform: translateX(-3px);
 }
 [data-testid="stSidebar"] div[role="radiogroup"] label p {
-    font-size: 16.5px !important;
+    font-size: 16px !important;
     font-weight: 700 !important;
     color: #0f172a !important;
     line-height: 1.4 !important;
@@ -315,16 +318,17 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
 [data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {
     display: none !important;
 }
-[data-testid="stSidebar"] button {
+[data-testid="stSidebar"] .stButton > button {
+    width: 100% !important;
     background-color: #fee2e2 !important;
     color: #b91c1c !important;
     border: 1.5px solid #fca5a5 !important;
     border-radius: 12px !important;
-    font-size: 17px !important;
+    font-size: 16px !important;
     font-weight: 700 !important;
-    padding: 10px !important;
+    padding: 9px 12px !important;
 }
-[data-testid="stSidebar"] button:hover {
+[data-testid="stSidebar"] .stButton > button:hover {
     background-color: #dc2626 !important;
     color: #ffffff !important;
 }
@@ -464,7 +468,7 @@ def render_export_buttons(df_export: pd.DataFrame, base_filename: str, report_ti
     csv_bytes = df_export.to_csv(index=False).encode("utf-8-sig")
     pdf_bytes = generate_pdf_report(df_export, report_title, subtitle_info)
 
-    c_ex, c_pdf = st.columns(2)
+    c_ex, c_pdf = st.columns([1, 1])
     with c_ex:
         st.download_button(
             "📥 تحميل التقرير (Excel / CSV)",
@@ -472,7 +476,6 @@ def render_export_buttons(df_export: pd.DataFrame, base_filename: str, report_ti
             file_name=f"{base_filename}.csv",
             mime="text/csv",
             type="primary",
-            use_container_width=True,
             key=f"{key_prefix}_csv"
         )
     with c_pdf:
@@ -482,7 +485,6 @@ def render_export_buttons(df_export: pd.DataFrame, base_filename: str, report_ti
             file_name=f"{base_filename}.pdf",
             mime="application/pdf",
             type="secondary",
-            use_container_width=True,
             key=f"{key_prefix}_pdf"
         )
 
@@ -568,7 +570,7 @@ def render_approved_requests_storekeeper_view(key_prefix: str = "sk_app"):
     df_app_export = pd.DataFrame(export_rows)
 
     st.markdown("<br>", unsafe_allow_html=True)
-    dl_c1, dl_c2 = st.columns(2)
+    dl_c1, dl_c2 = st.columns([1, 1])
     with dl_c1:
         st.download_button(
             "📄 طباعة / تحميل أذونات الصرف المفلترة (PDF)",
@@ -580,7 +582,6 @@ def render_approved_requests_storekeeper_view(key_prefix: str = "sk_app"):
             file_name=f"approved_transfers_{sel_loc}_{sel_item}_{date.today()}.pdf",
             mime="application/pdf",
             type="secondary",
-            use_container_width=True,
             key=f"{key_prefix}_pdf_btn"
         )
     with dl_c2:
@@ -590,7 +591,6 @@ def render_approved_requests_storekeeper_view(key_prefix: str = "sk_app"):
             file_name=f"approved_transfers_{sel_loc}_{sel_item}_{date.today()}.csv",
             mime="text/csv",
             type="primary",
-            use_container_width=True,
             key=f"{key_prefix}_csv_btn"
         )
 
@@ -621,14 +621,14 @@ def render_approved_requests_storekeeper_view(key_prefix: str = "sk_app"):
         with r_cols[5]:
             st.markdown(f"<div class='tbl-row-cell' dir='ltr'>{req['batches']['expiry_date']}</div>", unsafe_allow_html=True)
         with r_cols[6]:
-            if st.button("✅ موافقة وصرف", key=f"{key_prefix}_iss_{req['id']}", type="primary", use_container_width=True):
+            if st.button("✅ موافقة وصرف", key=f"{key_prefix}_iss_{req['id']}", type="primary"):
                 if issue_transfer_request_by_id(int(req["id"]), int(user["id"])):
                     st.success("🎉 تم الصرف وخصم الكمية من المخزن الرئيسي وترحيلها بنجاح!")
                     st.rerun()
 
     if len(filtered_approved) > 1:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button(f"✅ موافقة وصرف All ({len(filtered_approved)} طلب مفلتر)", type="primary", use_container_width=True, key=f"{key_prefix}_iss_all"):
+        if st.button(f"✅ موافقة وصرف All ({len(filtered_approved)} طلب مفلتر)", type="primary", key=f"{key_prefix}_iss_all"):
             for req in filtered_approved:
                 issue_transfer_request_by_id(int(req["id"]), int(user["id"]))
             st.success(f"🎉 تم تنفيذ وصرف {len(filtered_approved)} طلب بنجاح!")
@@ -770,7 +770,7 @@ user_loc_id = user["location_id"]
 user_loc_name = user["locations"]["name"] if user.get("locations") else "غير محدد"
 
 # =========================================================================
-# القائمة الجانبية + تغيير كلمة المرور للموظف + الصلاحيات المخصصة
+# القائمة الجانبية + طي/فرد شاشات المخزن الرئيسي + تغيير كلمة المرور
 # =========================================================================
 ROLE_LABELS = {
     "chairman": "رئيس مجلس الإدارة",
@@ -779,6 +779,13 @@ ROLE_LABELS = {
     "unit_supervisor": "مشرف وحدة / فرع",
     "employee": "موظف"
 }
+
+MAIN_STORE_SUB_PAGES = [
+    "↳ ⏳ تنبيهات تاريخ الصلاحية",
+    "↳ 🔮 التنبؤ بكفاية المخزون الرئيسي",
+    "↳ 🛒 الطلبيات",
+    "↳ 📥 إضافة فاتورة"
+]
 
 def get_default_pages_for_role(r_name: str, badge_txt: str = "") -> list:
     if r_name == "main_storekeeper":
@@ -790,7 +797,7 @@ def get_default_pages_for_role(r_name: str, badge_txt: str = "") -> list:
             "↳ 📥 إضافة فاتورة",
             f"📦 أذونات الصرف المعتمدة{badge_txt}",
             "⚙️ التكويد",
-            "📉 شاشة الهدر"
+            "📉 حساب الهدر"
         ]
     elif r_name in ["chairman", "general_manager"]:
         return [
@@ -805,7 +812,7 @@ def get_default_pages_for_role(r_name: str, badge_txt: str = "") -> list:
             "✍️ الموافقات",
             "📈 التقارير",
             "⚙️ التكويد",
-            "📉 شاشة الهدر",
+            "📉 حساب الهدر",
             "👥 إدارة المستخدمين والصلاحيات"
         ]
     elif r_name == "employee":
@@ -818,7 +825,7 @@ def get_default_pages_for_role(r_name: str, badge_txt: str = "") -> list:
             "↳ ⏳ تنبيهات تاريخ الصلاحية",
             "↳ 🔮 التنبؤ بكفاية المخزون الرئيسي",
             "🔄 أذونات الصرف",
-            "📉 شاشة الهدر"
+            "📉 حساب الهدر"
         ]
 
 ALL_SYSTEM_PAGES = [
@@ -834,7 +841,7 @@ ALL_SYSTEM_PAGES = [
     "✍️ الموافقات",
     "📈 التقارير",
     "⚙️ التكويد",
-    "📉 شاشة الهدر",
+    "📉 حساب الهدر",
     "👥 إدارة المستخدمين والصلاحيات"
 ]
 
@@ -842,6 +849,10 @@ def normalize_page_key(p_str: str) -> str:
     clean = str(p_str).strip()
     if clean.startswith("📦 أذونات الصرف المعتمدة"):
         return "📦 أذونات الصرف المعتمدة"
+    if clean in ["⏳ تنبيهات تاريخ الصلاحية", "🔮 التنبؤ بكفاية المخزون الرئيسي", "🛒 الطلبيات", "📥 إضافة فاتورة"]:
+        return f"↳ {clean}"
+    if clean == "📉 شاشة الهدر":
+        return "📉 حساب الهدر"
     return clean
 
 def parse_custom_pages(raw_val) -> list:
@@ -860,6 +871,9 @@ def parse_custom_pages(raw_val) -> list:
 if "show_change_pass" not in st.session_state:
     st.session_state.show_change_pass = False
 
+if "expand_main_store_menu" not in st.session_state:
+    st.session_state.expand_main_store_menu = True
+
 with st.sidebar:
     st.markdown("<h2 style='text-align: center !important; color: #0e4d92; font-weight: 800; margin-bottom: 12px;'>🧬 معامل أ.د/ أسامة عبدالمتعال</h2>", unsafe_allow_html=True)
     st.markdown(f"""
@@ -871,7 +885,7 @@ with st.sidebar:
                 font-size: 20px;
                 font-weight: 700;
                 box-shadow: 0 4px 10px rgba(14, 77, 146, 0.2);
-                margin-bottom: 18px;'>
+                margin-bottom: 14px;'>
         👤 {user['full_name']}
     </div>
     """, unsafe_allow_html=True)
@@ -881,31 +895,48 @@ with st.sidebar:
 
     custom_pages = parse_custom_pages(user.get("allowed_pages"))
     if custom_pages:
-        menu_options = []
+        allowed_set = set()
         for cp in custom_pages:
             norm_cp = normalize_page_key(cp)
             if norm_cp == "📦 أذونات الصرف المعتمدة" and approved_badge:
-                menu_options.append(f"📦 أذونات الصرف المعتمدة{approved_badge}")
+                allowed_set.add(f"📦 أذونات الصرف المعتمدة{approved_badge}")
             elif norm_cp in ALL_SYSTEM_PAGES:
-                menu_options.append(norm_cp)
-        if not menu_options:
-            menu_options = get_default_pages_for_role(role, approved_badge)
+                allowed_set.add(norm_cp)
+        base_menu = [p for p in get_default_pages_for_role(role, approved_badge) if p in allowed_set]
+        for p in ALL_SYSTEM_PAGES:
+            lbl = f"📦 أذونات الصرف المعتمدة{approved_badge}" if (p == "📦 أذونات الصرف المعتمدة" and approved_badge) else p
+            if lbl in allowed_set and lbl not in base_menu:
+                base_menu.append(lbl)
+        if not base_menu:
+            base_menu = get_default_pages_for_role(role, approved_badge)
     else:
-        menu_options = get_default_pages_for_role(role, approved_badge)
+        base_menu = get_default_pages_for_role(role, approved_badge)
+
+    has_main_store_subs = any(p in MAIN_STORE_SUB_PAGES for p in base_menu)
+    if has_main_store_subs:
+        arrow_icon = "▾" if st.session_state.expand_main_store_menu else "▸"
+        if st.button(f"{arrow_icon} شاشات المخزن الرئيسي ({'إخفاء' if st.session_state.expand_main_store_menu else 'عرض'})", key="toggle_main_store_subs_btn"):
+            st.session_state.expand_main_store_menu = not st.session_state.expand_main_store_menu
+            st.rerun()
+
+    if st.session_state.expand_main_store_menu:
+        menu_options = base_menu
+    else:
+        menu_options = [p for p in base_menu if p not in MAIN_STORE_SUB_PAGES]
 
     selected_raw = st.radio("القائمة الرئيسية", menu_options, label_visibility="collapsed")
     selected_page = normalize_page_key(selected_raw)
     st.divider()
 
-    if st.button("🔑 تغيير كلمة المرور", use_container_width=True, key="toggle_ch_pass_btn"):
+    if st.button("🔑 تغيير كلمة المرور", key="toggle_ch_pass_btn"):
         st.session_state.show_change_pass = not st.session_state.show_change_pass
 
     if st.session_state.show_change_pass:
-        with st.form("self_change_pass_form"):
+        with st.container(border=True):
             cur_p = st.text_input("كلمة المرور الحالية", type="password", key="ch_cur_p")
             new_p1 = st.text_input("كلمة المرور الجديدة", type="password", key="ch_new_p1")
             new_p2 = st.text_input("تأكيد كلمة المرور الجديدة", type="password", key="ch_new_p2")
-            if st.form_submit_button("💾 حفظ كلمة المرور", type="primary", use_container_width=True):
+            if st.button("💾 حفظ كلمة المرور", type="primary", key="save_self_pass_btn"):
                 if hash_password(cur_p) != user.get("password_hash"):
                     st.error("❌ كلمة المرور الحالية غير صحيحة.")
                 elif len(new_p1) < 4:
@@ -920,7 +951,7 @@ with st.sidebar:
                     st.success("✅ تم تغيير كلمة المرور بنجاح!")
                     st.rerun()
 
-    if st.button("🚪 تسجيل الخروج", use_container_width=True):
+    if st.button("🚪 تسجيل الخروج", key="logout_btn"):
         st.session_state.user = None
         st.rerun()
 
@@ -1242,10 +1273,10 @@ elif selected_page == "↳ 🔮 التنبؤ بكفاية المخزون الر�
         st.info("لا توجد بيانات مطابقة للفلاتر المختارة حالياً.")
 
 # =========================================================================
-# 4. شاشة: شاشة الهدر (بعد التكويد وقبل صلاحيات المستخدمين)
+# 4. شاشة: حساب الهدر (بعد التكويد وقبل صلاحيات المستخدمين)
 # =========================================================================
-elif selected_page == "📉 شاشة الهدر":
-    render_page_header("📉 شاشة الهدر")
+elif selected_page == "📉 حساب الهدر":
+    render_page_header("📉 حساب الهدر")
 
     items_df = get_df("items")
     locs_df = get_df("locations")
@@ -1254,7 +1285,7 @@ elif selected_page == "📉 شاشة الهدر":
     if items_df.empty:
         st.warning("⚠️ برجاء إضافة الأصناف أولاً من صفحة '⚙️ التكويد'.")
     else:
-        with st.form("wastage_calc_form"):
+        with st.container(border=True):
             w1, w2 = st.columns(2)
             with w1:
                 w_item_name = st.selectbox("🧪 اختر الصنف (مثال: ALT):", items_df["name"].tolist(), key="w_item_sel")
@@ -1323,8 +1354,7 @@ elif selected_page == "📉 شاشة الهدر":
             if wastage_cost > 0:
                 st.info(f"💰 التكلفة المالية التقديرية للهدر: **{wastage_cost:,.2f} ج.م** (بناءً على متوسط سعر الوحدة **{avg_unit_price:,.2f} ج.م**)")
 
-            save_w_btn = st.form_submit_button("💾 حفظ سجل الهدر وترحيله للتقارير", type="primary", use_container_width=True)
-            if save_w_btn:
+            if st.button("💾 حفظ سجل الهدر وترحيله للتقارير", type="primary", key="save_wastage_btn"):
                 if w_from > w_to:
                     st.error("❌ تاريخ البداية يجب أن يكون قبل أو مساوياً لتاريخ النهاية.")
                 else:
@@ -1458,7 +1488,7 @@ elif selected_page == "🏢 المخزن الرئيسي":
         with tab3:
             st.markdown("<h3 class='section-center-title'>🛠️ استرجاع للمورد / إعدام / تحديث الجرد الدوري</h3>", unsafe_allow_html=True)
             inv_choice_labels = [
-                f"{r['batches']['items']['name']} — {r['batches']['suppliers']['name']} | تشغيلة: {r['batches']['lot_number']} | المتاح: {int(r['kits_available'])} {r['batches']['items']['unit_name']}"
+                f"{r['batches']['items']['name']} — شركة: {r['batches']['suppliers']['name']} | تشغيلة: {r['batches']['lot_number']} | المتاح: {int(r['kits_available'])} {r['batches']['items']['unit_name']} | الصلاحية: {r['batches']['expiry_date']}"
                 for r in rows
             ]
             sel_inv_idx = st.selectbox("اختر الصنف والتشغيلة من المخزن الرئيسي:", range(len(rows)), format_func=lambda i: inv_choice_labels[i], key="m_act_inv_sel")
@@ -1482,7 +1512,7 @@ elif selected_page == "🏢 المخزن الرئيسي":
                 key="m_act_type_radio"
             )
 
-            with st.form("main_store_actions_form"):
+            with st.container(border=True):
                 if act_type in ["return_supplier", "destroy_item"]:
                     max_k = max(1, int(cur_kits_avail))
                     action_kits = st.number_input(
@@ -1513,7 +1543,7 @@ elif selected_page == "🏢 المخزن الرئيسي":
                     )
                     btn_lbl = "📋 حفظ تحديث الجرد"
 
-                if st.form_submit_button(btn_lbl, type="primary", use_container_width=True):
+                if st.button(btn_lbl, type="primary", key="exec_main_store_action_btn"):
                     if act_type == "return_supplier":
                         new_k = max(0.0, cur_kits_avail - float(action_kits))
                         new_t = max(0.0, new_k * cur_tpk)
@@ -1644,7 +1674,7 @@ elif selected_page == "↳ 🛒 الطلبيات":
         st.success("✅ لا يوجد عجز مطلوب شراؤه بناءً على الفلاتر والمدة المحددة!")
 
 # =========================================================================
-# 7. شاشة: إضافة فاتورة + تعديل فاتورة (Edit بصلاحية)
+# 7. شاشة: إضافة فاتورة + تعديل فاتورة (Edit بصلاحية، بدون حفظ بالـ Enter)
 # =========================================================================
 elif selected_page == "↳ 📥 إضافة فاتورة":
     render_page_header("📥 إضافة فاتورة")
@@ -1655,31 +1685,30 @@ elif selected_page == "↳ 📥 إضافة فاتورة":
     if items_df.empty or suppliers_df.empty:
         st.warning("⚠️ برجاء إضافة الأصناف والشركات أولاً من صفحة '⚙️ التكويد'.")
     else:
-        with st.form("receive_batch_form"):
+        with st.container(border=True):
             col1, col2 = st.columns(2)
             with col1:
-                item_choice = st.selectbox("اختر الصنف / التحليل", items_df["name"].tolist())
+                item_choice = st.selectbox("اختر الصنف / التحليل", items_df["name"].tolist(), key="add_inv_item_sel")
                 selected_item = items_df[items_df["name"] == item_choice].iloc[0]
                 sub_u = "اختبار" if selected_item["sub_unit_name"] == "تست" else selected_item["sub_unit_name"]
                 
-                sup_choice = st.selectbox("الشركة الموردة", suppliers_df["name"].tolist())
+                sup_choice = st.selectbox("الشركة الموردة", suppliers_df["name"].tolist(), key="add_inv_sup_sel")
                 selected_sup = suppliers_df[suppliers_df["name"] == sup_choice].iloc[0]
                 
-                lot_number = st.text_input("رقم التشغيلة (Lot Number)")
-                expiry_date = st.date_input("تاريخ الصلاحية", min_value=date.today())
+                lot_number = st.text_input("رقم التشغيلة (Lot Number)", key="add_inv_lot")
+                expiry_date = st.date_input("تاريخ الصلاحية", min_value=date.today(), key="add_inv_exp")
 
             with col2:
-                kits_qty = st.number_input(f"الكمية الواردة (عدد الـ {selected_item['unit_name']})", min_value=1, step=1)
-                tests_per_kit = st.number_input(f"عدد الـ ({sub_u}) داخل كل {selected_item['unit_name']}", min_value=1, value=100, step=1)
-                unit_price = st.number_input(f"سعر الـ ({sub_u}) الواحد بالجنيه", min_value=0.0, step=0.1, format="%.2f")
-                rec_date = st.date_input("تاريخ التوريد", value=date.today())
+                kits_qty = st.number_input(f"الكمية الواردة (عدد الـ {selected_item['unit_name']})", min_value=1, step=1, key="add_inv_kits")
+                tests_per_kit = st.number_input(f"عدد الـ ({sub_u}) داخل كل {selected_item['unit_name']}", min_value=1, value=100, step=1, key="add_inv_tpk")
+                unit_price = st.number_input(f"سعر الـ ({sub_u}) الواحد بالجنيه", min_value=0.0, step=0.1, format="%.2f", key="add_inv_up")
+                rec_date = st.date_input("تاريخ التوريد", value=date.today(), key="add_inv_rec")
 
             total_tests = kits_qty * tests_per_kit
             kit_price = unit_price * tests_per_kit
             st.info(f"📌 ملخص الإضافة: **{kits_qty}** {selected_item['unit_name']} × **{tests_per_kit}** = **{total_tests}** {sub_u} | سعر العلبة: **{kit_price:,.2f} ج.م** | إجمالي الفاتورة: **{total_tests * unit_price:,.2f} ج.م**")
             
-            submitted = st.form_submit_button("✅ تأكيد إضافة الفاتورة للمخزن الرئيسي", type="primary", use_container_width=True)
-            if submitted:
+            if st.button("✅ تأكيد إضافة الفاتورة للمخزن الرئيسي", type="primary", key="confirm_add_inv_btn"):
                 if not lot_number.strip():
                     st.error("برجاء إدخال رقم التشغيلة.")
                 else:
@@ -1705,7 +1734,6 @@ elif selected_page == "↳ 📥 إضافة فاتورة":
                     }).execute()
                     st.success(f"🎉 تم إضافة {kits_qty} {selected_item['unit_name']} ({total_tests} {sub_u}) بنجاح إلى المخزن الرئيسي!")
 
-        # إمكانية تعديل فاتورة (Edit) حسب الصلاحية (المدير العام / رئيس مجلس الإدارة / من له صلاحية إضافة أو تعديل فاتورة)
         can_edit_invoice = (role in ["chairman", "general_manager"]) or ("↳ 📥 إضافة فاتورة" in parse_custom_pages(user.get("allowed_pages")))
         if can_edit_invoice:
             st.divider()
@@ -1722,7 +1750,7 @@ elif selected_page == "↳ 📥 إضافة فاتورة":
                     target_b_id = int(target_b["id"])
                     t_sub_u = "اختبار" if target_b["items"]["sub_unit_name"] == "تست" else target_b["items"]["sub_unit_name"]
 
-                    with st.form(f"edit_batch_form_{target_b_id}"):
+                    with st.container(border=True):
                         ec1, ec2 = st.columns(2)
                         upd_lot = ec1.text_input("رقم التشغيلة (Lot Number)", value=target_b["lot_number"], key=f"eb_lot_{target_b_id}")
                         try:
@@ -1741,7 +1769,7 @@ elif selected_page == "↳ 📥 إضافة فاتورة":
                             init_rec_d = date.today()
                         upd_rec = ec2.date_input("تاريخ التوريد", value=init_rec_d, key=f"eb_rec_{target_b_id}")
 
-                        if st.form_submit_button("💾 حفظ تعديل الفاتورة", type="primary", use_container_width=True):
+                        if st.button("💾 حفظ تعديل الفاتورة", type="primary", key=f"save_eb_btn_{target_b_id}"):
                             if not upd_lot.strip():
                                 st.error("❌ برجاء إدخال رقم التشغيلة.")
                             else:
@@ -1756,7 +1784,6 @@ elif selected_page == "↳ 📥 إضافة فاتورة":
                                     "received_date": str(upd_rec)
                                 }).eq("id", target_b_id).execute()
 
-                                # تحديث رصيد المخزن الرئيسي للتشغيلة إذا لم يتم سحبها أو بناءً على الفارق
                                 m_inv_list = supabase.table("inventory").select("*").eq("location_id", 1).eq("batch_id", target_b_id).execute().data or []
                                 if m_inv_list:
                                     m_inv_row = m_inv_list[0]
@@ -1877,7 +1904,7 @@ elif selected_page == "🧪 المخازن الفرعية":
                 )
 
             with s_row_cols[7]:
-                if st.button("🧪 سحب للجهاز", key=f"pull_btn_{row['id']}", type="primary", use_container_width=True):
+                if st.button("🧪 سحب للجهاز", key=f"pull_btn_{row['id']}", type="primary"):
                     tests_pulled = kits_pull * b["tests_per_kit"]
                     cost_pulled = tests_pulled * float(b["unit_price_per_test"])
                     
@@ -2098,7 +2125,7 @@ elif selected_page == "✍️ الموافقات":
                 with row_cols[8]:
                     btn_a, btn_r = st.columns(2)
                     with btn_a:
-                        if st.button("✅", key=f"app_{req['id']}", type="primary", use_container_width=True, help="موافقة واعتماد"):
+                        if st.button("✅", key=f"app_{req['id']}", type="primary", help="موافقة واعتماد"):
                             supabase.table("transfer_requests").update({
                                 "status": "approved_ready_to_issue",
                                 "approved_by": user["id"],
@@ -2106,12 +2133,12 @@ elif selected_page == "✍️ الموافقات":
                             }).eq("id", req["id"]).execute()
                             st.rerun()
                     with btn_r:
-                        if st.button("❌", key=f"rej_{req['id']}", use_container_width=True, help="رفض الطلب"):
+                        if st.button("❌", key=f"rej_{req['id']}", help="رفض الطلب"):
                             supabase.table("transfer_requests").update({"status": "rejected"}).eq("id", req["id"]).execute()
                             st.rerun()
 
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button(f"✅ موافقة واعتماد All ({len(filtered_pending)} طلب)", type="primary", use_container_width=True, key="approve_all_filtered_btn"):
+            if st.button(f"✅ موافقة واعتماد All ({len(filtered_pending)} طلب)", type="primary", key="approve_all_filtered_btn"):
                 ids_to_approve = [r["id"] for r in filtered_pending]
                 supabase.table("transfer_requests").update({
                     "status": "approved_ready_to_issue",
@@ -2314,7 +2341,7 @@ elif selected_page == "📈 التقارير":
             w_data = []
 
         if not w_data:
-            st.info("لا توجد سجلات هدر محفوظة بعد. يمكنك تسجيلها من شاشة **📉 شاشة الهدر**.")
+            st.info("لا توجد سجلات هدر محفوظة بعد. يمكنك تسجيلها من شاشة **📉 حساب الهدر**.")
         else:
             wf1, wf2 = st.columns(2)
             with wf1:
@@ -2386,6 +2413,16 @@ elif selected_page == "📈 التقارير":
                     f"الجهة: {sel_w_rep_loc} | الصنف: {sel_w_rep_item}",
                     key_prefix="w_rep_exp"
                 )
+
+                st.markdown("<br>", unsafe_allow_html=True)
+                confirm_reset_w = st.checkbox("تأكيد رغبتي في مسح جميع سجلات الهدر (ريست أول)", key="confirm_reset_wastage_chk")
+                if st.button("🔄 ريسيت أول (مسح كل سجلات الهدر)", key="reset_all_wastage_btn"):
+                    if not confirm_reset_w:
+                        st.warning("⚠️ برجاء تفعيل مربع التأكيد أولاً قبل تنفيذ (ريست أول).")
+                    else:
+                        supabase.table("wastage_logs").delete().neq("id", 0).execute()
+                        st.success("✅ تم تنفيذ (ريست أول) ومسح جميع سجلات الهدر بنجاح!")
+                        st.rerun()
             else:
                 st.info("لا توجد سجلات مطابقة للفلاتر المختارة.")
 
@@ -2445,7 +2482,7 @@ elif selected_page == "⚙️ التكويد":
                 total_monthly_rate = 0.0
                 st.caption("اختر مخزناً فرعياً أو وحدة واحدة على الأقل لتحديد معدلات الاستهلاك الشهري.")
 
-            if st.button("💾 حفظ الصنف وربطه بالمخازن المختارة", type="primary", use_container_width=True, key="save_new_item_btn"):
+            if st.button("💾 حفظ الصنف وربطه بالمخازن المختارة", type="primary", key="save_new_item_btn"):
                 if not i_name.strip():
                     st.error("برجاء إدخال اسم الصنف.")
                 elif not effective_locs:
@@ -2537,7 +2574,7 @@ elif selected_page == "⚙️ التكويد":
 
             btn_c1, btn_c2 = st.columns(2)
             with btn_c1:
-                if st.button("💾 حفظ تعديلات الصنف والمعدلات", type="primary", use_container_width=True, key="btn_upd_item"):
+                if st.button("💾 حفظ تعديلات الصنف والمعدلات", type="primary", key="btn_upd_item"):
                     if not new_i_name.strip():
                         st.error("برجاء إدخال اسم الصنف.")
                     elif not edit_effective_locs:
@@ -2570,7 +2607,7 @@ elif selected_page == "⚙️ التكويد":
                             st.error("تعذر التحديث: يوجد صنف آخر بنفس الاسم.")
 
             with btn_c2:
-                if st.button("🗑️ حذف الصنف نهائياً", use_container_width=True, key="btn_del_item"):
+                if st.button("🗑️ حذف الصنف نهائياً", key="btn_del_item"):
                     has_batches = supabase.table("batches").select("id").eq("item_id", cur_item_id).limit(1).execute()
                     if has_batches.data:
                         st.error("❌ لا يمكن حذف هذا الصنف لأنه مرتبط بفواتير توريد أو أرصدة سابقة بالمخزن.")
@@ -2604,10 +2641,10 @@ elif selected_page == "⚙️ التكويد":
 
     with st2:
         with st.expander("➕ إضافة شركة موردة جديدة", expanded=True):
-            with st.form("add_sup_form"):
-                s_name = st.text_input("اسم الشركة الموردة (مثال: Roche, Abbott, Mindray)")
-                s_contact = st.text_input("بيانات التواصل / المندوب (اختياري)")
-                if st.form_submit_button("➕ إضافة الشركة", type="primary"):
+            with st.container(border=True):
+                s_name = st.text_input("اسم الشركة الموردة (مثال: Roche, Abbott, Mindray)", key="add_s_name_inp")
+                s_contact = st.text_input("بيانات التواصل / المندوب (اختياري)", key="add_s_contact_inp")
+                if st.button("➕ إضافة الشركة", type="primary", key="add_s_submit_btn"):
                     if s_name.strip():
                         try:
                             supabase.table("suppliers").insert({"name": s_name.strip(), "contact_info": s_contact.strip()}).execute()
@@ -2625,34 +2662,32 @@ elif selected_page == "⚙️ التكويد":
             edit_sup_choice = st.selectbox("اختر الشركة المراد تعديلها أو حذفها:", sups_df["name"].tolist(), key="edit_sup_sel")
             cur_sup = sups_df[sups_df["name"] == edit_sup_choice].iloc[0]
             
-            with st.form("edit_sup_form"):
-                new_s_name = st.text_input("اسم الشركة الموردة", value=cur_sup["name"])
-                new_s_contact = st.text_input("بيانات التواصل / المندوب", value=cur_sup["contact_info"] or "")
+            with st.container(border=True):
+                new_s_name = st.text_input("اسم الشركة الموردة", value=cur_sup["name"], key=f"upd_s_name_{cur_sup['id']}")
+                new_s_contact = st.text_input("بيانات التواصل / المندوب", value=cur_sup["contact_info"] or "", key=f"upd_s_cont_{cur_sup['id']}")
                 
                 sc1, sc2 = st.columns(2)
-                upd_sup_btn = sc1.form_submit_button("💾 حفظ تعديل الشركة", type="primary", use_container_width=True)
-                del_sup_btn = sc2.form_submit_button("🗑️ حذف الشركة", use_container_width=True)
-                
-                if upd_sup_btn:
-                    if new_s_name.strip():
-                        try:
-                            supabase.table("suppliers").update({
-                                "name": new_s_name.strip(),
-                                "contact_info": new_s_contact.strip()
-                            }).eq("id", int(cur_sup["id"])).execute()
-                            st.success("✅ تم تعديل بيانات الشركة بنجاح!")
+                with sc1:
+                    if st.button("💾 حفظ تعديل الشركة", type="primary", key=f"upd_s_btn_{cur_sup['id']}"):
+                        if new_s_name.strip():
+                            try:
+                                supabase.table("suppliers").update({
+                                    "name": new_s_name.strip(),
+                                    "contact_info": new_s_contact.strip()
+                                }).eq("id", int(cur_sup["id"])).execute()
+                                st.success("✅ تم تعديل بيانات الشركة بنجاح!")
+                                st.rerun()
+                            except Exception:
+                                st.error("اسم الشركة مستخدم بالفعل.")
+                with sc2:
+                    if st.button("🗑️ حذف الشركة", key=f"del_s_btn_{cur_sup['id']}"):
+                        has_sup_batches = supabase.table("batches").select("id").eq("supplier_id", int(cur_sup["id"])).limit(1).execute()
+                        if has_sup_batches.data:
+                            st.error("❌ لا يمكن حذف هذه الشركة لأنها مرتبطة بفواتير توريد سابقة.")
+                        else:
+                            supabase.table("suppliers").delete().eq("id", int(cur_sup["id"])).execute()
+                            st.success("🗑️ تم حذف الشركة بنجاح!")
                             st.rerun()
-                        except Exception:
-                            st.error("اسم الشركة مستخدم بالفعل.")
-                            
-                if del_sup_btn:
-                    has_sup_batches = supabase.table("batches").select("id").eq("supplier_id", int(cur_sup["id"])).limit(1).execute()
-                    if has_sup_batches.data:
-                        st.error("❌ لا يمكن حذف هذه الشركة لأنها مرتبطة بفواتير توريد سابقة.")
-                    else:
-                        supabase.table("suppliers").delete().eq("id", int(cur_sup["id"])).execute()
-                        st.success("🗑️ تم حذف الشركة بنجاح!")
-                        st.rerun()
 
             disp_sups = sups_df[["id", "name", "contact_info"]].copy()
             disp_sups.columns = ["الكود", "اسم الشركة", "بيانات التواصل"]
@@ -2667,12 +2702,12 @@ elif selected_page == "⚙️ التكويد":
         }
         
         with st.expander("➕ إضافة مخزن فرعي أو وحدة جديدة", expanded=True):
-            with st.form("add_loc_form"):
+            with st.container(border=True):
                 lc1, lc2 = st.columns(2)
-                loc_name_new = lc1.text_input("اسم الفرع أو الوحدة (مثال: فرع مدينة نصر، وحدة الباثولوجي)")
-                loc_type_new = lc2.selectbox("نوع الموقع", ["branch", "unit"], format_func=lambda x: LOC_TYPE_LABELS[x])
+                loc_name_new = lc1.text_input("اسم الفرع أو الوحدة (مثال: فرع مدينة نصر، وحدة الباثولوجي)", key="new_loc_n_inp")
+                loc_type_new = lc2.selectbox("نوع الموقع", ["branch", "unit"], format_func=lambda x: LOC_TYPE_LABELS[x], key="new_loc_t_sel")
                 
-                if st.form_submit_button("➕ إضافة المخزن الفرعي / الوحدة", type="primary"):
+                if st.button("➕ إضافة المخزن الفرعي / الوحدة", type="primary", key="add_loc_submit_btn"):
                     if loc_name_new.strip():
                         try:
                             supabase.table("locations").insert({
@@ -2694,35 +2729,34 @@ elif selected_page == "⚙️ التكويد":
             sel_loc_edit = st.selectbox("اختر الفرع أو الوحدة:", sub_locs_edit["name"].tolist(), key="edit_loc_sel")
             cur_loc = sub_locs_edit[sub_locs_edit["name"] == sel_loc_edit].iloc[0]
             
-            with st.form("edit_loc_form"):
+            with st.container(border=True):
                 elc1, elc2 = st.columns(2)
-                upd_loc_name = elc1.text_input("اسم الفرع / الوحدة", value=cur_loc["name"])
+                upd_loc_name = elc1.text_input("اسم الفرع / الوحدة", value=cur_loc["name"], key=f"upd_loc_n_{cur_loc['id']}")
                 t_opts = ["branch", "unit"]
-                upd_loc_type = elc2.selectbox("النوع", t_opts, index=t_opts.index(cur_loc["location_type"]), format_func=lambda x: LOC_TYPE_LABELS[x])
+                upd_loc_type = elc2.selectbox("النوع", t_opts, index=t_opts.index(cur_loc["location_type"]), format_func=lambda x: LOC_TYPE_LABELS[x], key=f"upd_loc_t_{cur_loc['id']}")
                 
                 lbc1, lbc2 = st.columns(2)
-                upd_loc_btn = lbc1.form_submit_button("💾 حفظ التعديل", type="primary", use_container_width=True)
-                del_loc_btn = lbc2.form_submit_button("🗑️ حذف الفرع / الوحدة", use_container_width=True)
-                
-                if upd_loc_btn and upd_loc_name.strip():
-                    try:
-                        supabase.table("locations").update({
-                            "name": upd_loc_name.strip(),
-                            "location_type": upd_loc_type
-                        }).eq("id", int(cur_loc["id"])).execute()
-                        st.success("✅ تم تعديل بيانات الموقع بنجاح!")
-                        st.rerun()
-                    except Exception:
-                        st.error("الاسم مستخدم بالفعل.")
-                        
-                if del_loc_btn:
-                    has_inv = supabase.table("inventory").select("id").eq("location_id", int(cur_loc["id"])).gt("tests_available", 0).limit(1).execute()
-                    if has_inv.data:
-                        st.error("❌ لا يمكن حذف هذا الفرع لأن لديه أرصدة متاحة حالياً.")
-                    else:
-                        supabase.table("locations").delete().eq("id", int(cur_loc["id"])).execute()
-                        st.success("🗑️ تم حذف الموقع بنجاح!")
-                        st.rerun()
+                with lbc1:
+                    if st.button("💾 حفظ التعديل", type="primary", key=f"upd_loc_btn_{cur_loc['id']}"):
+                        if upd_loc_name.strip():
+                            try:
+                                supabase.table("locations").update({
+                                    "name": upd_loc_name.strip(),
+                                    "location_type": upd_loc_type
+                                }).eq("id", int(cur_loc["id"])).execute()
+                                st.success("✅ تم تعديل بيانات الموقع بنجاح!")
+                                st.rerun()
+                            except Exception:
+                                st.error("الاسم مستخدم بالفعل.")
+                with lbc2:
+                    if st.button("🗑️ حذف الفرع / الوحدة", key=f"del_loc_btn_{cur_loc['id']}"):
+                        has_inv = supabase.table("inventory").select("id").eq("location_id", int(cur_loc["id"])).gt("tests_available", 0).limit(1).execute()
+                        if has_inv.data:
+                            st.error("❌ لا يمكن حذف هذا الفرع لأن لديه أرصدة متاحة حالياً.")
+                        else:
+                            supabase.table("locations").delete().eq("id", int(cur_loc["id"])).execute()
+                            st.success("🗑️ تم حذف الموقع بنجاح!")
+                            st.rerun()
 
         disp_locs = locs_df[["id", "name", "location_type"]].copy()
         disp_locs["location_type"] = disp_locs["location_type"].map(LOC_TYPE_LABELS)
@@ -2739,13 +2773,13 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
     loc_names_all = locs_df["name"].tolist() if not locs_df.empty else ["المخزن الرئيسي"]
 
     with st.expander("➕ إنشاء حساب مستخدم جديد", expanded=True):
-        with st.form("create_user_form"):
+        with st.container(border=True):
             c1, c2 = st.columns(2)
-            f_name = c1.text_input("الاسم الكامل للموظف")
-            u_name = c2.text_input("اسم الدخول (Username بالإنجليزية)")
-            u_pass = c1.text_input("كلمة المرور (Password)", type="password")
-            u_role = c2.selectbox("الصلاحية / الدور الوظيفي", list(ROLE_LABELS.keys()), format_func=lambda x: ROLE_LABELS[x])
-            u_loc = st.selectbox("الفرع / الوحدة التابع لها", loc_names_all)
+            f_name = c1.text_input("الاسم الكامل للموظف", key="new_u_fn")
+            u_name = c2.text_input("اسم الدخول (Username بالإنجليزية)", key="new_u_un")
+            u_pass = c1.text_input("كلمة المرور (Password)", type="password", key="new_u_pw")
+            u_role = c2.selectbox("الصلاحية / الدور الوظيفي", list(ROLE_LABELS.keys()), format_func=lambda x: ROLE_LABELS[x], key="new_u_rl")
+            u_loc = st.selectbox("الفرع / الوحدة التابع لها", loc_names_all, key="new_u_lc")
             u_custom_pages = st.multiselect(
                 "☑️ تحديد الشاشات المسموحة للمستخدم (اتركه فارغاً لاستخدام صلاحيات الدور الافتراضية):",
                 options=ALL_SYSTEM_PAGES,
@@ -2753,7 +2787,7 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
                 key="new_u_pages_multi"
             )
             
-            if st.form_submit_button("✅ إنشاء الحساب", type="primary", use_container_width=True):
+            if st.button("✅ إنشاء الحساب", type="primary", key="create_u_submit_btn"):
                 if f_name and u_name and u_pass:
                     loc_id = int(locs_df[locs_df["name"] == u_loc].iloc[0]["id"]) if not locs_df.empty else 1
                     try:
@@ -2796,7 +2830,7 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
 
         cur_u_pages = [normalize_page_key(p) for p in parse_custom_pages(cur_u.get("allowed_pages")) if normalize_page_key(p) in ALL_SYSTEM_PAGES]
 
-        with st.form(f"edit_user_form_{cur_u_id}"):
+        with st.container(border=True):
             ec1, ec2 = st.columns(2)
             upd_full_name = ec1.text_input("الاسم الكامل للموظف", value=cur_u["full_name"], key=f"u_fn_{cur_u_id}")
             role_keys = list(ROLE_LABELS.keys())
@@ -2821,7 +2855,7 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
 
             reset_pass_val = st.text_input("إعادة تعيين كلمة مرور جديدة للمستخدم (اختياري - اتركه فارغاً للإبقاء على الحالية)", type="password", key=f"u_np_{cur_u_id}")
 
-            if st.form_submit_button("💾 حفظ التعديلات والصلاحيات", type="primary", use_container_width=True):
+            if st.button("💾 حفظ التعديلات والصلاحيات", type="primary", key=f"save_u_upd_btn_{cur_u_id}"):
                 if not upd_full_name.strip():
                     st.error("❌ برجاء إدخال الاسم الكامل.")
                 else:
