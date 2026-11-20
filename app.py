@@ -149,28 +149,50 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     word-break: break-word;
 }
 
+/* التبويبات كأزرار واضحة وكبيرة وبخط عريض في كل صفحات البرنامج */
 .stTabs [data-baseweb="tab-list"] {
-    gap: 10px;
+    gap: 12px !important;
+    flex-wrap: wrap !important;
     direction: rtl !important;
     background-color: #ffffff;
-    padding: 8px;
-    border-radius: 14px;
+    padding: 10px 12px;
+    border-radius: 16px;
     border: 1.5px solid #cbd5e1;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.05);
+    margin-bottom: 14px;
 }
 .stTabs [data-baseweb="tab"] {
-    background-color: #f1f5f9;
-    color: #1e293b;
-    border-radius: 10px;
-    padding: 10px 20px;
-    font-weight: 700;
-    font-size: 16px;
-    border: 1px solid transparent;
+    background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+    color: #0f172a;
+    border-radius: 12px;
+    padding: 11px 22px;
+    font-weight: 800 !important;
+    font-size: 17px !important;
+    border: 1.5px solid #94a3b8;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+    transition: all 0.2s ease;
+}
+.stTabs [data-baseweb="tab"] p {
+    font-weight: 800 !important;
+    font-size: 17px !important;
+    margin: 0 !important;
+}
+.stTabs [data-baseweb="tab"]:hover {
+    border-color: #0284c7;
+    background: #f0f9ff;
+    transform: translateY(-1px);
 }
 .stTabs [aria-selected="true"] {
     background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%) !important;
     color: #ffffff !important;
-    box-shadow: 0 4px 10px rgba(14, 77, 146, 0.2);
+    border-color: #0e4d92 !important;
+    box-shadow: 0 5px 14px rgba(14, 77, 146, 0.28) !important;
+}
+.stTabs [aria-selected="true"] p {
+    color: #ffffff !important;
+}
+.stTabs [data-baseweb="tab-highlight"] {
+    display: none !important;
 }
 
 [data-testid="stForm"], [data-testid="stExpander"], div[data-testid="stVerticalBlockBorderWrapper"] {
@@ -499,7 +521,6 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 def log_user_action(actor: dict, action_type: str, page_name: str, details: str, location_name: str = ""):
-    """تسجيل كل أكشن يأخذه أي مستخدم في جدول audit_logs"""
     if not actor:
         return
     try:
@@ -2249,7 +2270,7 @@ elif selected_page == "✍️ الموافقات":
                 st.rerun()
 
 # =========================================================================
-# 12. التقارير (يشمل التقرير الكمي والمالي + الاستهلاك + الأسعار + الهدر + سجل تتبع المستخدمين)
+# 12. التقارير
 # =========================================================================
 elif selected_page == "📈 التقارير":
     render_page_header("📈 التقارير")
