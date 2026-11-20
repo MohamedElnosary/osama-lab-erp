@@ -18,7 +18,7 @@ except Exception:
     PDF_AVAILABLE = False
 
 # =========================================================================
-# إعدادات الصفحة والتنسيق العام (هوية بصرية موحدة مريحة للعين وعالية الوضوح)
+# إعدادات الصفحة والتنسيق العام (هوية بصرية موحدة + PWA + استجابة الموبايل)
 # =========================================================================
 st.set_page_config(
     page_title="معامل أ.د/ أسامة عبدالمتعال",
@@ -28,6 +28,14 @@ st.set_page_config(
 )
 
 st.markdown("""
+<meta name="theme-color" content="#0e4d92">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="معامل أسامة">
+<link rel="manifest" href="app/static/manifest.json">
+<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2966/2966327.png">
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
 
@@ -345,6 +353,37 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
 [data-testid="stSidebar"] .stButton > button:hover {
     background-color: #dc2626 !important;
     color: #ffffff !important;
+}
+
+/* تحسينات عرض شاشات الموبايل (أقل من 768px) */
+@media (max-width: 768px) {
+    .main .block-container {
+        padding-left: 0.7rem !important;
+        padding-right: 0.7rem !important;
+        padding-top: 1rem !important;
+    }
+    .page-header-banner {
+        padding: 12px 14px !important;
+        border-radius: 14px !important;
+    }
+    .page-header-banner h1 {
+        font-size: 22px !important;
+    }
+    .stTabs [data-baseweb="tab"] {
+        font-size: 14px !important;
+        padding: 8px 12px !important;
+    }
+    .stTabs [data-baseweb="tab"] p {
+        font-size: 14px !important;
+    }
+    .unified-tbl {
+        display: block !important;
+        overflow-x: auto !important;
+        white-space: nowrap !important;
+    }
+    .kpi-value {
+        font-size: 22px !important;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
