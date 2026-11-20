@@ -70,44 +70,55 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     padding: 0 !important;
 }
 
-/* شبكة جدول CSS Grid الموحدة بدون أي تكسر أو ظهور None */
-.grid-table-wrap {
+/* الجدول الموحد النظيف مع دعم تلوين الصف بالكامل */
+.unified-tbl {
     width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 6px;
     direction: rtl !important;
-    margin-bottom: 14px;
+    text-align: center !important;
+    margin-bottom: 12px;
 }
-.grid-table-row {
-    display: grid;
-    gap: 6px;
-    margin-bottom: 6px;
-    align-items: stretch;
-}
-.grid-hdr-box {
+.unified-tbl thead th {
     background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%);
     color: #ffffff;
     font-size: 15px;
     font-weight: 800;
     padding: 11px 8px;
-    border-radius: 10px;
     text-align: center !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    border: none;
 }
-.grid-cell-box {
+.unified-tbl thead th:first-child {
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+.unified-tbl thead th:last-child {
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+.unified-tbl tbody td {
     background-color: #ffffff;
     color: #0f172a;
     font-size: 15px;
     font-weight: 700;
     padding: 11px 8px;
-    border-radius: 10px;
-    border: 1px solid #cbd5e1;
     text-align: center !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 46px;
-    word-break: break-word;
+    border-top: 1px solid #cbd5e1;
+    border-bottom: 1px solid #cbd5e1;
+    vertical-align: middle;
+}
+.unified-tbl tbody td:first-child {
+    border-right: 1px solid #cbd5e1;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+.unified-tbl tbody td:last-child {
+    border-left: 1px solid #cbd5e1;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+.unified-tbl tbody tr:hover td {
+    filter: brightness(0.98);
 }
 
 /* خلايا الصفوف التفاعلية */
@@ -320,40 +331,27 @@ def render_page_header(title_text: str):
     st.markdown(f'<div class="page-header-banner"><h1>{title_text}</h1></div>', unsafe_allow_html=True)
 
 def render_styled_table(headers: list, rows_data: list, row_bg_colors: list = None):
-    if not rows_data or not headers:
+    if not rows_data:
         return
 
-    num_cols = len(headers)
-    grid_tpl = f"repeat({num_cols}, minmax(0, 1fr))"
-
-    hdr_items = []
-    for h in headers:
-        h_txt = "" if h is None else str(h)
-        hdr_items.append(f'<div class="grid-hdr-box">{h_txt}</div>')
-    hdr_html = f'<div class="grid-table-row" style="grid-template-columns:{grid_tpl};">{"".join(hdr_items)}</div>'
-
-    body_rows_html = []
+    ths = "".join([f"<th>{str(h) if h is not None else ''}</th>" for h in headers])
+    trs_list = []
     for r_idx, r_item in enumerate(rows_data):
-        bg_color = "#ffffff"
-        if row_bg_colors and r_idx < len(row_bg_colors) and row_bg_colors[r_idx]:
-            bg_color = str(row_bg_colors[r_idx])
-
-        cell_items = []
-        for c_idx in range(num_cols):
-            cell_val = r_item[c_idx] if c_idx < len(r_item) else ""
+        bg_color = row_bg_colors[r_idx] if (row_bg_colors and r_idx < len(row_bg_colors) and row_bg_colors[r_idx]) else "#ffffff"
+        tds_list = []
+        for cell_val in r_item:
             if isinstance(cell_val, tuple):
-                raw_txt = cell_val[0] if len(cell_val) > 0 else ""
-                extra_st = cell_val[1] if len(cell_val) > 1 and cell_val[1] else ""
+                raw_txt = cell_val[0]
+                style_str = cell_val[1] if len(cell_val) > 1 and cell_val[1] else ""
             else:
                 raw_txt = cell_val
-                extra_st = ""
-            safe_txt = "" if raw_txt is None else str(raw_txt)
-            cell_items.append(f'<div class="grid-cell-box" style="background-color:{bg_color};{extra_st}">{safe_txt}</div>')
+                style_str = ""
+            safe_txt = str(raw_txt) if raw_txt is not None else ""
+            tds_list.append(f'<td style="background-color:{bg_color}; {style_str}">{safe_txt}</td>')
+        trs_list.append("<tr>" + "".join(tds_list) + "</tr>")
 
-        body_rows_html.append(f'<div class="grid-table-row" style="grid-template-columns:{grid_tpl};">{"".join(cell_items)}</div>')
-
-    full_html = f'<div class="grid-table-wrap">{hdr_html}{"".join(body_rows_html)}</div>'
-    st.markdown(full_html, unsafe_allow_html=True)
+    html_table = f'<table class="unified-tbl"><thead><tr>{ths}</tr></thead><tbody>{"".join(trs_list)}</tbody></table>'
+    st.markdown(html_table, unsafe_allow_html=True)
 
 def df_to_styled_table(df: pd.DataFrame):
     if df is None or df.empty:
@@ -482,8 +480,44 @@ def render_export_buttons(df_export: pd.DataFrame, base_filename: str, report_ti
             key=f"{key_prefix}_pdf"
         )
 
-def issue_transfer_request_by_id(req_id: int, actor_id: int):
-    req_rows = supabase.table("transfer_requests").select("*").eq("id", int(req_id)).execute().data or []
+# =========================================================================
+# الاتصال بقاعدة البيانات السحابية Supabase
+# =========================================================================
+@st.cache_resource
+def init_supabase():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
+
+try:
+    supabase = init_supabase()
+except Exception as e:
+    st.error("⚠️ لم يتم ضبط مفاتيح الاتصال بقاعدة البيانات (Secrets) بعد.")
+    st.stop()
+
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def log_user_action(actor: dict, action_type: str, page_name: str, details: str, location_name: str = ""):
+    """تسجيل كل أكشن يأخذه أي مستخدم في جدول audit_logs"""
+    if not actor:
+        return
+    try:
+        supabase.table("audit_logs").insert({
+            "user_id": int(actor["id"]) if actor.get("id") is not None else None,
+            "username": str(actor.get("username") or ""),
+            "full_name": str(actor.get("full_name") or ""),
+            "role": str(actor.get("role") or ""),
+            "action_type": str(action_type),
+            "page_name": str(page_name),
+            "location_name": str(location_name),
+            "details": str(details)
+        }).execute()
+    except Exception:
+        pass
+
+def issue_transfer_request_by_id(req_id: int, actor: dict):
+    req_rows = supabase.table("transfer_requests").select("*, locations!transfer_requests_to_location_id_fkey(name), items(name, unit_name), suppliers(name), batches(lot_number)").eq("id", int(req_id)).execute().data or []
     if not req_rows:
         return False
     req = req_rows[0]
@@ -517,9 +551,21 @@ def issue_transfer_request_by_id(req_id: int, actor_id: int):
 
     supabase.table("transfer_requests").update({
         "status": "issued",
-        "issued_by": int(actor_id),
+        "issued_by": int(actor["id"]),
         "issued_at": datetime.now().isoformat()
     }).eq("id", int(req_id)).execute()
+
+    to_loc_n = req["locations"]["name"] if req.get("locations") else str(req["to_location_id"])
+    it_n = req["items"]["name"] if req.get("items") else str(req["item_id"])
+    u_n = req["items"]["unit_name"] if req.get("items") else "علبة"
+    lot_n = req["batches"]["lot_number"] if req.get("batches") else "-"
+    log_user_action(
+        actor,
+        "تنفيذ صرف إذن",
+        "أذونات الصرف المعتمدة",
+        f"صرف {req['kits_requested']} {u_n} ({req['tests_requested']} اختبار/قطعة) من صنف ({it_n}) تشغيلة ({lot_n}) إلى ({to_loc_n})",
+        to_loc_n
+    )
     return True
 
 def render_approved_requests_storekeeper_view(key_prefix: str = "sk_app"):
@@ -616,7 +662,7 @@ def render_approved_requests_storekeeper_view(key_prefix: str = "sk_app"):
             st.markdown(f"<div class='tbl-row-cell' dir='ltr'>{req['batches']['expiry_date']}</div>", unsafe_allow_html=True)
         with r_cols[6]:
             if st.button("✅ موافقة وصرف", key=f"{key_prefix}_iss_{req['id']}", type="primary"):
-                if issue_transfer_request_by_id(int(req["id"]), int(user["id"])):
+                if issue_transfer_request_by_id(int(req["id"]), user):
                     st.success("🎉 تم الصرف وخصم الكمية من المخزن الرئيسي وترحيلها بنجاح!")
                     st.rerun()
 
@@ -624,27 +670,9 @@ def render_approved_requests_storekeeper_view(key_prefix: str = "sk_app"):
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button(f"✅ موافقة وصرف All ({len(filtered_approved)} طلب مفلتر)", type="primary", key=f"{key_prefix}_iss_all"):
             for req in filtered_approved:
-                issue_transfer_request_by_id(int(req["id"]), int(user["id"]))
+                issue_transfer_request_by_id(int(req["id"]), user)
             st.success(f"🎉 تم تنفيذ وصرف {len(filtered_approved)} طلب بنجاح!")
             st.rerun()
-
-# =========================================================================
-# الاتصال بقاعدة البيانات السحابية Supabase
-# =========================================================================
-@st.cache_resource
-def init_supabase():
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
-    return create_client(url, key)
-
-try:
-    supabase = init_supabase()
-except Exception as e:
-    st.error("⚠️ لم يتم ضبط مفاتيح الاتصال بقاعدة البيانات (Secrets) بعد.")
-    st.stop()
-
-def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
 
 # =========================================================================
 # نظام تسجيل الدخول
@@ -753,6 +781,13 @@ if st.session_state.user is None:
             res = supabase.table("users").select("*, locations(name, location_type)").eq("username", username.strip()).eq("is_active", True).execute()
             if res.data and res.data[0]["password_hash"] == hash_password(password):
                 st.session_state.user = res.data[0]
+                log_user_action(
+                    res.data[0],
+                    "تسجيل دخول",
+                    "تسجيل الدخول",
+                    f"دخول المستخدم ({res.data[0]['username']}) إلى النظام",
+                    res.data[0]["locations"]["name"] if res.data[0].get("locations") else ""
+                )
                 st.rerun()
             else:
                 st.error("❌ اسم المستخدم أو كلمة المرور غير صحيحة، أو الحساب موقوف.")
@@ -930,10 +965,12 @@ with st.sidebar:
                     supabase.table("users").update({"password_hash": new_h}).eq("id", int(user["id"])).execute()
                     st.session_state.user["password_hash"] = new_h
                     st.session_state.show_change_pass = False
+                    log_user_action(user, "تغيير كلمة المرور", "القائمة الجانبية", "قام المستخدم بتغيير كلمة المرور الخاصة به", user_loc_name)
                     st.success("✅ تم تغيير كلمة المرور بنجاح!")
                     st.rerun()
 
     if st.button("🚪 تسجيل الخروج", key="logout_btn"):
+        log_user_action(user, "تسجيل خروج", "القائمة الجانبية", "قام المستخدم بتسجيل الخروج", user_loc_name)
         st.session_state.user = None
         st.rerun()
 
@@ -1367,6 +1404,13 @@ elif selected_page == "📉 حساب الهدر":
                             supabase.table("wastage_logs").insert({**payload_w, "allowed_wastage_pct": float(allowed_pct)}).execute()
                         except Exception:
                             supabase.table("wastage_logs").insert(payload_w).execute()
+                        log_user_action(
+                            user,
+                            "حساب هدر",
+                            "حساب الهدر",
+                            f"حساب هدر ({w_item_name}) للفترة {w_from} إلى {w_to} | المسحوب: {issued_qty:,.0f} | الفعلي: {actual_tests:,.0f} | الهدر: {wastage_qty:,.0f} ({wastage_pct:.1f}%)",
+                            w_loc_label
+                        )
                         st.success("✅ تم حفظ سجل الهدر بنجاح! يمكنك مراجعته في شاشة **📈 التقارير**.")
                         st.rerun()
 
@@ -1530,18 +1574,39 @@ elif selected_page == "🏢 المخزن الرئيسي":
                         new_k = max(0.0, cur_kits_avail - float(action_kits))
                         new_t = max(0.0, new_k * cur_tpk)
                         supabase.table("inventory").update({"kits_available": new_k, "tests_available": new_t}).eq("id", int(cur_inv_r["id"])).execute()
+                        log_user_action(
+                            user,
+                            "استرجاع للمورد",
+                            "المخزن الرئيسي",
+                            f"استرجاع {action_kits} {cur_it['unit_name']} من صنف ({cur_it['name']}) تشغيلة ({cur_b['lot_number']}) لشركة ({cur_sup['name']}) | السبب: {reason_txt.strip() or '-'}",
+                            "المخزن الرئيسي"
+                        )
                         st.success(f"✅ تم تسجيل استرجاع {action_kits} {cur_it['unit_name']} ({int(action_kits * cur_tpk)} {sub_u}) لشركة {cur_sup['name']} وتحديث الرصيد!")
                         st.rerun()
                     elif act_type == "destroy_item":
                         new_k = max(0.0, cur_kits_avail - float(action_kits))
                         new_t = max(0.0, new_k * cur_tpk)
                         supabase.table("inventory").update({"kits_available": new_k, "tests_available": new_t}).eq("id", int(cur_inv_r["id"])).execute()
+                        log_user_action(
+                            user,
+                            "إعدام صنف",
+                            "المخزن الرئيسي",
+                            f"إعدام {action_kits} {cur_it['unit_name']} من صنف ({cur_it['name']}) تشغيلة ({cur_b['lot_number']}) | السبب: {reason_txt.strip() or '-'}",
+                            "المخزن الرئيسي"
+                        )
                         st.success(f"🔥 تم إعدام {action_kits} {cur_it['unit_name']} ({int(action_kits * cur_tpk)} {sub_u}) وخصمها من المخزن الرئيسي!")
                         st.rerun()
                     else:
                         new_k = float(action_kits)
                         new_t = new_k * cur_tpk
                         supabase.table("inventory").update({"kits_available": new_k, "tests_available": new_t}).eq("id", int(cur_inv_r["id"])).execute()
+                        log_user_action(
+                            user,
+                            "تحديث جرد",
+                            "المخزن الرئيسي",
+                            f"تحديث جرد صنف ({cur_it['name']}) تشغيلة ({cur_b['lot_number']}) من {int(cur_kits_avail)} إلى {int(new_k)} {cur_it['unit_name']} | ملاحظات: {reason_txt.strip() or '-'}",
+                            "المخزن الرئيسي"
+                        )
                         st.success(f"📋 تم تحديث الجرد ليصبح الرصيد الفعلي {int(new_k)} {cur_it['unit_name']} ({int(new_t)} {sub_u})!")
                         st.rerun()
 
@@ -1714,6 +1779,13 @@ elif selected_page == "↳ 📥 إضافة فاتورة":
                         "kits_available": float(kits_qty),
                         "tests_available": float(total_tests)
                     }).execute()
+                    log_user_action(
+                        user,
+                        "إضافة فاتورة",
+                        "إضافة فاتورة",
+                        f"إضافة {kits_qty} {selected_item['unit_name']} ({total_tests} {sub_u}) من صنف ({selected_item['name']}) شركة ({selected_sup['name']}) تشغيلة ({lot_number.strip()})",
+                        "المخزن الرئيسي"
+                    )
                     st.success(f"🎉 تم إضافة {kits_qty} {selected_item['unit_name']} ({total_tests} {sub_u}) بنجاح إلى المخزن الرئيسي!")
 
         can_edit_invoice = (role in ["chairman", "general_manager"]) or ("↳ 📥 إضافة فاتورة" in parse_custom_pages(user.get("allowed_pages")))
@@ -1778,6 +1850,13 @@ elif selected_page == "↳ 📥 إضافة فاتورة":
                                         "tests_available": new_avail_t
                                     }).eq("id", int(m_inv_row["id"])).execute()
 
+                                log_user_action(
+                                    user,
+                                    "تعديل فاتورة",
+                                    "إضافة فاتورة",
+                                    f"تعديل فاتورة #{target_b_id} لصنف ({target_b['items']['name']}) تشغيلة ({upd_lot.strip()}) كمية ({upd_kits} {target_b['items']['unit_name']})",
+                                    "المخزن الرئيسي"
+                                )
                                 st.success("✅ تم تعديل الفاتورة وتحديث البيانات بنجاح!")
                                 st.rerun()
 
@@ -1799,6 +1878,7 @@ elif selected_page == "🧪 المخازن الفرعية":
             sub_cat_filter = st.selectbox("📂 التصنيف:", ["الكل", "محاليل وكواشف", "مستهلكات"], key="sub_cat_gm")
     else:
         sel_loc_id = user_loc_id
+        loc_name = user_loc_name
         st.markdown(f"<h3 class='section-center-title'>🏥 مخزن: {user_loc_name}</h3>", unsafe_allow_html=True)
         fc2, fc3, fc4 = st.columns(3)
         with fc2:
@@ -1905,6 +1985,14 @@ elif selected_page == "🧪 المخازن الفرعية":
                         "cost_incurred": float(cost_pulled),
                         "logged_by": user["id"]
                     }).execute()
+
+                    log_user_action(
+                        user,
+                        "سحب للجهاز",
+                        "المخازن الفرعية",
+                        f"سحب {kits_pull} {it['unit_name']} ({tests_pulled} {sub_u}) من صنف ({it['name']}) شركة ({sup['name']}) تشغيلة ({b['lot_number']})",
+                        loc_name
+                    )
                     st.success(f"تم سحب {kits_pull} {it['unit_name']} ({tests_pulled} {sub_u}) وخصمها من رصيد الوحدة.")
                     st.rerun()
 
@@ -1938,9 +2026,11 @@ elif selected_page == "🔄 أذونات الصرف":
             with c1:
                 if role in ["unit_supervisor", "employee"] and user_loc_id != 1:
                     target_loc_id = user_loc_id
+                    target_loc_name = user_loc_name
                     st.text_input("الوحدة / الفرع الطالب", value=user_loc_name, disabled=True)
                 else:
                     loc_choice = st.selectbox("اختر الوحدة / الفرع الطالب", sub_locs["name"].tolist())
+                    target_loc_name = loc_choice
                     target_loc_id = int(sub_locs[sub_locs["name"] == loc_choice].iloc[0]["id"])
                 
                 if not rates_df.empty and "location_id" in rates_df.columns:
@@ -1992,6 +2082,13 @@ elif selected_page == "🔄 أذونات الصرف":
                             "status": "pending_gm",
                             "requested_by": user["id"]
                         }).execute()
+                        log_user_action(
+                            user,
+                            "إرسال طلب صرف",
+                            "أذونات الصرف",
+                            f"طلب صرف {kits_to_req} {sel_item['unit_name']} ({kits_to_req * tpk} {sub_u}) من صنف ({sel_item['name']}) شركة ({sel_sup['name']}) تشغيلة ({best_b['batches']['lot_number']})",
+                            target_loc_name
+                        )
                         st.success("✅ تم إرسال إذن الصرف بنجاح وهو الآن في صفحة '✍️ الموافقات'!")
                 else:
                     st.error(f"❌ لا يوجد رصيد متاح في المخزن الرئيسي من ({sel_item['name']}) لشركة ({sel_sup['name']}).")
@@ -2113,10 +2210,24 @@ elif selected_page == "✍️ الموافقات":
                                 "approved_by": user["id"],
                                 "approved_at": datetime.now().isoformat()
                             }).eq("id", req["id"]).execute()
+                            log_user_action(
+                                user,
+                                "موافقة على إذن صرف",
+                                "الموافقات",
+                                f"اعتماد طلب #{req['id']} لصنف ({req['items']['name']}) كمية ({req['kits_requested']} {req['items']['unit_name']})",
+                                req["locations"]["name"]
+                            )
                             st.rerun()
                     with btn_r:
                         if st.button("❌", key=f"rej_{req['id']}", help="رفض الطلب"):
                             supabase.table("transfer_requests").update({"status": "rejected"}).eq("id", req["id"]).execute()
+                            log_user_action(
+                                user,
+                                "رفض إذن صرف",
+                                "الموافقات",
+                                f"رفض طلب #{req['id']} لصنف ({req['items']['name']}) كمية ({req['kits_requested']} {req['items']['unit_name']})",
+                                req["locations"]["name"]
+                            )
                             st.rerun()
 
             st.markdown("<br>", unsafe_allow_html=True)
@@ -2127,20 +2238,28 @@ elif selected_page == "✍️ الموافقات":
                     "approved_by": user["id"],
                     "approved_at": datetime.now().isoformat()
                 }).in_("id", ids_to_approve).execute()
+                log_user_action(
+                    user,
+                    "موافقة جماعية",
+                    "الموافقات",
+                    f"اعتماد جماعي لعدد {len(ids_to_approve)} طلب صرف",
+                    sel_app_loc
+                )
                 st.success(f"🎉 تم اعتماد والموافقة على {len(ids_to_approve)} طلب دفعة واحدة!")
                 st.rerun()
 
 # =========================================================================
-# 12. التقارير
+# 12. التقارير (يشمل التقرير الكمي والمالي + الاستهلاك + الأسعار + الهدر + سجل تتبع المستخدمين)
 # =========================================================================
 elif selected_page == "📈 التقارير":
     render_page_header("📈 التقارير")
     
-    rep_t1, rep_t2, rep_t3, rep_t4 = st.tabs([
+    rep_t1, rep_t2, rep_t3, rep_t4, rep_t5 = st.tabs([
         "💰 التقرير الكمي والمالي (حسب الصنف)",
         "📊 تقرير الاستهلاك الكمي والمالي (بالصنف والشركة)",
         "💲 مقارنة وتطور أسعار الشركات الموردة",
-        "📉 تقرير الهدر والفاقد"
+        "📉 تقرير الهدر والفاقد",
+        "🕵️ سجل حركات المستخدمين (Audit Log)"
     ])
 
     with rep_t1:
@@ -2403,8 +2522,79 @@ elif selected_page == "📈 التقارير":
                         st.warning("⚠️ برجاء تفعيل مربع التأكيد أولاً قبل تنفيذ (ريست أول).")
                     else:
                         supabase.table("wastage_logs").delete().neq("id", 0).execute()
+                        log_user_action(
+                            user,
+                            "ريست أول للهدر",
+                            "تقرير الهدر والفاقد",
+                            "مسح جميع سجلات الهدر بالكامل",
+                            sel_w_rep_loc
+                        )
                         st.success("✅ تم تنفيذ (ريست أول) ومسح جميع سجلات الهدر بنجاح!")
                         st.rerun()
+            else:
+                st.info("لا توجد سجلات مطابقة للفلاتر المختارة.")
+
+    with rep_t5:
+        st.markdown("<h3 class='section-center-title'>🕵️ سجل حركات المستخدمين (من قام بأي أكشن ومتى)</h3>", unsafe_allow_html=True)
+        try:
+            a_res = supabase.table("audit_logs").select("*").order("id", desc=True).limit(200).execute()
+            a_data = a_res.data or []
+        except Exception:
+            a_data = []
+
+        if not a_data:
+            st.info("لا توجد حركات مسجلة في سجل التتبع بعد.")
+        else:
+            af_u1, af_u2 = st.columns(2)
+            u_names_opts = ["الكل"] + sorted(list({r.get("full_name") for r in a_data if r.get("full_name")}))
+            act_types_opts = ["الكل"] + sorted(list({r.get("action_type") for r in a_data if r.get("action_type")}))
+            with af_u1:
+                sel_audit_user = st.selectbox("👤 فلترة حسب المستخدم:", u_names_opts, key="audit_u_flt")
+            with af_u2:
+                sel_audit_act = st.selectbox("⚡ فلترة حسب نوع الأكشن:", act_types_opts, key="audit_act_flt")
+
+            a_rows_disp = []
+            a_export_list = []
+            for ar in a_data:
+                u_fn = ar.get("full_name") or "-"
+                a_tp = ar.get("action_type") or "-"
+                if sel_audit_user != "الكل" and u_fn != sel_audit_user:
+                    continue
+                if sel_audit_act != "الكل" and a_tp != sel_audit_act:
+                    continue
+
+                dt_str = str(ar.get("created_at") or "")[:19].replace("T", " ")
+                a_rows_disp.append([
+                    (u_fn, "color:#0e4d92; font-weight:800;"),
+                    ar.get("username") or "-",
+                    (a_tp, "color:#0284c7; font-weight:800;"),
+                    ar.get("page_name") or "-",
+                    ar.get("location_name") or "-",
+                    ar.get("details") or "-",
+                    dt_str
+                ])
+                a_export_list.append({
+                    "المستخدم": u_fn,
+                    "اسم الدخول": ar.get("username") or "-",
+                    "نوع الأكشن": a_tp,
+                    "الشاشة": ar.get("page_name") or "-",
+                    "الوحدة / الفرع": ar.get("location_name") or "-",
+                    "التفاصيل": ar.get("details") or "-",
+                    "التاريخ والوقت": dt_str
+                })
+
+            if a_rows_disp:
+                render_styled_table(
+                    ["المستخدم", "اسم الدخول", "نوع الأكشن", "الشاشة", "الوحدة / الفرع", "التفاصيل", "التاريخ والوقت"],
+                    a_rows_disp
+                )
+                render_export_buttons(
+                    pd.DataFrame(a_export_list),
+                    f"audit_log_{date.today()}",
+                    "سجل حركات المستخدمين",
+                    f"المستخدم: {sel_audit_user} | الأكشن: {sel_audit_act}",
+                    key_prefix="audit_log_exp"
+                )
             else:
                 st.info("لا توجد سجلات مطابقة للفلاتر المختارة.")
 
@@ -2493,6 +2683,7 @@ elif selected_page == "⚙️ التكويد":
                             if rates_payload:
                                 supabase.table("location_consumption_rates").insert(rates_payload).execute()
 
+                            log_user_action(user, "إضافة صنف", "التكويد", f"إضافة صنف ({i_name.strip()}) بمعدل شهري {total_monthly_rate:,.0f}", "الكل")
                             st.success(f"🎉 تم حفظ الصنف ({i_name.strip()}) وربطه بـ {len(effective_locs)} موقع بنجاح!")
                             st.rerun()
                         except Exception:
@@ -2585,6 +2776,7 @@ elif selected_page == "⚙️ التكويد":
                                 if new_rates_rows:
                                     supabase.table("location_consumption_rates").insert(new_rates_rows).execute()
 
+                                log_user_action(user, "تعديل صنف", "التكويد", f"تعديل صنف ({new_i_name.strip()}) بمعدل شهري {upd_total_rate:,.0f}", "الكل")
                                 st.success("✅ تم تحديث بيانات الصنف ومعدلات كل وحدة/فرع بنجاح!")
                                 st.rerun()
                             except Exception:
@@ -2597,6 +2789,7 @@ elif selected_page == "⚙️ التكويد":
                             st.error("❌ لا يمكن حذف هذا الصنف لأنه مرتبط بفواتير توريد أو أرصدة سابقة بالمخزن.")
                         else:
                             supabase.table("items").delete().eq("id", cur_item_id).execute()
+                            log_user_action(user, "حذف صنف", "التكويد", f"حذف صنف ({cur_item['name']})", "الكل")
                             st.success("🗑️ تم حذف الصنف بنجاح!")
                             st.rerun()
 
@@ -2632,6 +2825,7 @@ elif selected_page == "⚙️ التكويد":
                     if s_name.strip():
                         try:
                             supabase.table("suppliers").insert({"name": s_name.strip(), "contact_info": s_contact.strip()}).execute()
+                            log_user_action(user, "إضافة شركة موردة", "التكويد", f"إضافة شركة ({s_name.strip()})", "")
                             st.success("تم إضافة الشركة بنجاح!")
                             st.rerun()
                         except Exception:
@@ -2659,6 +2853,7 @@ elif selected_page == "⚙️ التكويد":
                                     "name": new_s_name.strip(),
                                     "contact_info": new_s_contact.strip()
                                 }).eq("id", int(cur_sup["id"])).execute()
+                                log_user_action(user, "تعديل شركة موردة", "التكويد", f"تعديل شركة ({new_s_name.strip()})", "")
                                 st.success("✅ تم تعديل بيانات الشركة بنجاح!")
                                 st.rerun()
                             except Exception:
@@ -2670,6 +2865,7 @@ elif selected_page == "⚙️ التكويد":
                             st.error("❌ لا يمكن حذف هذه الشركة لأنها مرتبطة بفواتير توريد سابقة.")
                         else:
                             supabase.table("suppliers").delete().eq("id", int(cur_sup["id"])).execute()
+                            log_user_action(user, "حذف شركة موردة", "التكويد", f"حذف شركة ({cur_sup['name']})", "")
                             st.success("🗑️ تم حذف الشركة بنجاح!")
                             st.rerun()
 
@@ -2698,6 +2894,7 @@ elif selected_page == "⚙️ التكويد":
                                 "name": loc_name_new.strip(),
                                 "location_type": loc_type_new
                             }).execute()
+                            log_user_action(user, "إضافة موقع", "التكويد", f"إضافة ({loc_name_new.strip()})", loc_name_new.strip())
                             st.success(f"🎉 تم إضافة ({loc_name_new.strip()}) بنجاح!")
                             st.rerun()
                         except Exception:
@@ -2728,6 +2925,7 @@ elif selected_page == "⚙️ التكويد":
                                     "name": upd_loc_name.strip(),
                                     "location_type": upd_loc_type
                                 }).eq("id", int(cur_loc["id"])).execute()
+                                log_user_action(user, "تعديل موقع", "التكويد", f"تعديل موقع ({upd_loc_name.strip()})", upd_loc_name.strip())
                                 st.success("✅ تم تعديل بيانات الموقع بنجاح!")
                                 st.rerun()
                             except Exception:
@@ -2739,6 +2937,7 @@ elif selected_page == "⚙️ التكويد":
                             st.error("❌ لا يمكن حذف هذا الفرع لأن لديه أرصدة متاحة حالياً.")
                         else:
                             supabase.table("locations").delete().eq("id", int(cur_loc["id"])).execute()
+                            log_user_action(user, "حذف موقع", "التكويد", f"حذف موقع ({cur_loc['name']})", cur_loc["name"])
                             st.success("🗑️ تم حذف الموقع بنجاح!")
                             st.rerun()
 
@@ -2790,6 +2989,14 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
                                 supabase.table("users").insert(base_u_payload).execute()
                         else:
                             supabase.table("users").insert(base_u_payload).execute()
+
+                        log_user_action(
+                            user,
+                            "إنشاء مستخدم",
+                            "إدارة المستخدمين والصلاحيات",
+                            f"إنشاء حساب ({u_name.strip()}) باسم ({f_name.strip()}) بصلاحية ({ROLE_LABELS.get(u_role, u_role)})",
+                            u_loc
+                        )
                         st.success(f"🎉 تم إنشاء الحساب! ابعت للموظف البيانات دي:\n- **اسم الدخول:** `{u_name.strip()}`\n- **كلمة المرور:** `{u_pass}`")
                         st.rerun()
                     except Exception:
@@ -2812,7 +3019,6 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
             if not m_l.empty:
                 cur_u_loc_name = m_l.iloc[0]["name"]
 
-        # عرض الشاشات الحالية الظاهرة للمستخدم (سواء مخصصة أو الديفولت الخاصة بدوره)
         active_pages_for_u = [normalize_page_key(p) for p in get_effective_pages_for_user(cur_u) if normalize_page_key(p) in ALL_SYSTEM_PAGES]
 
         with st.container(border=True):
@@ -2838,7 +3044,6 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
                 key=f"u_pgs_{cur_u_id}"
             )
 
-            # عرض الشاشات الحالية مع زر ناقص (-) لحذف أي شاشة مباشرة
             if active_pages_for_u:
                 st.markdown("**الشاشات الحالية للمستخدم (اضغط ➖ لحذف شاشة):**")
                 p_cols = st.columns(min(len(active_pages_for_u), 3))
@@ -2855,6 +3060,7 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
                                     supabase.table("users").update({"allowed_pages": pages_json_rem}).eq("id", cur_u_id).execute()
                                     if int(user["id"]) == cur_u_id:
                                         st.session_state.user["allowed_pages"] = pages_json_rem
+                                    log_user_action(user, "إزالة صلاحية شاشة", "إدارة المستخدمين والصلاحيات", f"إزالة ({pg_item}) من حساب ({cur_u['username']})", upd_loc_name)
                                     st.rerun()
                                 except Exception:
                                     st.error("تعذر تحديث الصلاحيات.")
@@ -2884,6 +3090,13 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
                     if int(user["id"]) == cur_u_id:
                         st.session_state.user = {**st.session_state.user, **upd_payload, "allowed_pages": pages_json_str}
 
+                    log_user_action(
+                        user,
+                        "تعديل مستخدم/صلاحيات",
+                        "إدارة المستخدمين والصلاحيات",
+                        f"تحديث حساب ({cur_u['username']}) -> الاسم: ({upd_full_name.strip()}) | الصلاحية: ({ROLE_LABELS.get(upd_role, upd_role)}) | الحالة: ({'Active' if upd_is_active else 'Inactive'})",
+                        upd_loc_name
+                    )
                     st.success("✅ تم حفظ تعديلات المستخدم والصلاحيات بنجاح!")
                     st.rerun()
 
