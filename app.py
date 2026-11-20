@@ -7,6 +7,7 @@ import hashlib
 from datetime import datetime, date, timedelta
 import os
 import urllib.request
+import json
 
 try:
     from fpdf import FPDF
@@ -334,7 +335,6 @@ def render_page_header(title_text: str):
     st.markdown(f'<div class="page-header-banner"><h1>{title_text}</h1></div>', unsafe_allow_html=True)
 
 def render_styled_table(headers: list, rows_data: list, row_bg_colors: list = None):
-    """رسم جدول HTML موحد من اليمين لليسار مع دعم تلوين الصف بالكامل"""
     if not rows_data:
         return
 
@@ -358,7 +358,6 @@ def render_styled_table(headers: list, rows_data: list, row_bg_colors: list = No
     st.markdown(html_table, unsafe_allow_html=True)
 
 def df_to_styled_table(df: pd.DataFrame):
-    """تحويل DataFrame مباشرة إلى الجدول الموحد"""
     if df is None or df.empty:
         return
     headers = [str(c) for c in df.columns]
@@ -368,7 +367,7 @@ def df_to_styled_table(df: pd.DataFrame):
     render_styled_table(headers, rows_data)
 
 # =========================================================================
-# دالة توليد ملف PDF عام للتقارير والطلبيات (تُرجع بايتس صالحة دائماً بدون None)
+# دالة توليد ملف PDF عام للتقارير والطلبيات
 # =========================================================================
 @st.cache_resource
 def get_arabic_font_path():
@@ -459,7 +458,6 @@ def generate_pdf_report(df_rep: pd.DataFrame, report_title: str, subtitle_info: 
     return str(out).encode("latin1", errors="replace")
 
 def render_export_buttons(df_export: pd.DataFrame, base_filename: str, report_title: str, subtitle_info: str = "", key_prefix: str = "exp"):
-    """عرض زري تحميل Excel و PDF متجاورين أسفل أي تقرير"""
     if df_export is None or df_export.empty:
         return
     st.markdown("<br>", unsafe_allow_html=True)
@@ -624,7 +622,7 @@ user_loc_id = user["location_id"]
 user_loc_name = user["locations"]["name"] if user.get("locations") else "غير محدد"
 
 # =========================================================================
-# القائمة الجانبية ومعلومات المستخدم حسب الصلاحية
+# القائمة الجانبية + تغيير كلمة المرور للموظف + الصلاحيات المخصصة
 # =========================================================================
 ROLE_LABELS = {
     "chairman": "رئيس مجلس الإدارة",
@@ -632,6 +630,75 @@ ROLE_LABELS = {
     "main_storekeeper": "أمين المخزن الرئيسي",
     "unit_supervisor": "مشرف وحدة / فرع"
 }
+
+def get_default_pages_for_role(r_name: str, badge_txt: str = "") -> list:
+    if r_name == "main_storekeeper":
+        return [
+            "🏢 المخزن الرئيسي",
+            "🛒 الطلبيات",
+            "📥 إضافة فاتورة",
+            f"📦 أذونات الصرف المعتمدة{badge_txt}",
+            "🔮 التنبؤ بكفاية المخزون الرئيسي",
+            "📉 شاشة الهدر",
+            "⚙️ التكويد"
+        ]
+    elif r_name in ["chairman", "general_manager"]:
+        return [
+            "📊 الرئيسية",
+            "⏳ تنبيهات تاريخ الصلاحية",
+            "🔮 التنبؤ بكفاية المخزون الرئيسي",
+            "📉 شاشة الهدر",
+            "🏢 المخزن الرئيسي",
+            "🛒 الطلبيات",
+            "🧪 المخازن الفرعية",
+            "📥 إضافة فاتورة",
+            "🔄 أذونات الصرف",
+            "✍️ الموافقات",
+            "📈 التقارير",
+            "⚙️ التكويد",
+            "👥 إدارة المستخدمين والصلاحيات"
+        ]
+    else:
+        return [
+            "🧪 المخازن الفرعية",
+            "⏳ تنبيهات تاريخ الصلاحية",
+            "🔮 التنبؤ بكفاية المخزون الرئيسي",
+            "📉 شاشة الهدر",
+            "🔄 أذونات الصرف"
+        ]
+
+ALL_SYSTEM_PAGES = [
+    "📊 الرئيسية",
+    "⏳ تنبيهات تاريخ الصلاحية",
+    "🔮 التنبؤ بكفاية المخزون الرئيسي",
+    "📉 شاشة الهدر",
+    "🏢 المخزن الرئيسي",
+    "🛒 الطلبيات",
+    "🧪 المخازن الفرعية",
+    "📥 إضافة فاتورة",
+    "🔄 أذونات الصرف",
+    "📦 أذونات الصرف المعتمدة",
+    "✍️ الموافقات",
+    "📈 التقارير",
+    "⚙️ التكويد",
+    "👥 إدارة المستخدمين والصلاحيات"
+]
+
+def parse_custom_pages(raw_val) -> list:
+    if not raw_val:
+        return []
+    if isinstance(raw_val, list):
+        return [str(x) for x in raw_val if x]
+    try:
+        parsed = json.loads(raw_val)
+        if isinstance(parsed, list):
+            return [str(x) for x in parsed if x]
+    except Exception:
+        pass
+    return [p.strip() for p in str(raw_val).split("||") if p.strip()]
+
+if "show_change_pass" not in st.session_state:
+    st.session_state.show_change_pass = False
 
 with st.sidebar:
     st.markdown("<h2 style='text-align: center !important; color: #0e4d92; font-weight: 800; margin-bottom: 12px;'>🧬 معامل أ.د/ أسامة عبدالمتعال</h2>", unsafe_allow_html=True)
@@ -652,44 +719,46 @@ with st.sidebar:
     approved_count_res = supabase.table("transfer_requests").select("id", count="exact").eq("status", "approved_ready_to_issue").execute()
     approved_badge = f" ({approved_count_res.count})" if (approved_count_res.count and approved_count_res.count > 0) else ""
 
-    menu_options = []
-    if role == "main_storekeeper":
-        menu_options = [
-            "🏢 المخزن الرئيسي",
-            "🛒 الطلبيات",
-            "📥 إضافة فاتورة",
-            f"📦 أذونات الصرف المعتمدة{approved_badge}",
-            "🔮 التنبؤ بكفاية المخزون الرئيسي",
-            "📉 شاشة الهدر",
-            "⚙️ التكويد"
-        ]
-    elif role in ["chairman", "general_manager"]:
-        menu_options = [
-            "📊 الرئيسية",
-            "⏳ تنبيهات تاريخ الصلاحية",
-            "🔮 التنبؤ بكفاية المخزون الرئيسي",
-            "📉 شاشة الهدر",
-            "🏢 المخزن الرئيسي",
-            "🛒 الطلبيات",
-            "🧪 المخازن الفرعية",
-            "📥 إضافة فاتورة",
-            "🔄 أذونات الصرف",
-            "✍️ الموافقات",
-            "📈 التقارير",
-            "⚙️ التكويد",
-            "👥 إدارة المستخدمين والصلاحيات"
-        ]
+    custom_pages = parse_custom_pages(user.get("allowed_pages"))
+    if custom_pages:
+        menu_options = []
+        for cp in custom_pages:
+            if cp == "📦 أذونات الصرف المعتمدة" and approved_badge:
+                menu_options.append(f"📦 أذونات الصرف المعتمدة{approved_badge}")
+            elif cp in ALL_SYSTEM_PAGES:
+                menu_options.append(cp)
+        if not menu_options:
+            menu_options = get_default_pages_for_role(role, approved_badge)
     else:
-        menu_options = [
-            "🧪 المخازن الفرعية",
-            "⏳ تنبيهات تاريخ الصلاحية",
-            "🔮 التنبؤ بكفاية المخزون الرئيسي",
-            "📉 شاشة الهدر",
-            "🔄 أذونات الصرف"
-        ]
+        menu_options = get_default_pages_for_role(role, approved_badge)
 
     selected_page = st.radio("القائمة الرئيسية", menu_options, label_visibility="collapsed")
     st.divider()
+
+    # زر تغيير كلمة المرور للمستخدم نفسه
+    if st.button("🔑 تغيير كلمة المرور", use_container_width=True, key="toggle_ch_pass_btn"):
+        st.session_state.show_change_pass = not st.session_state.show_change_pass
+
+    if st.session_state.show_change_pass:
+        with st.form("self_change_pass_form"):
+            cur_p = st.text_input("كلمة المرور الحالية", type="password", key="ch_cur_p")
+            new_p1 = st.text_input("كلمة المرور الجديدة", type="password", key="ch_new_p1")
+            new_p2 = st.text_input("تأكيد كلمة المرور الجديدة", type="password", key="ch_new_p2")
+            if st.form_submit_button("💾 حفظ كلمة المرور", type="primary", use_container_width=True):
+                if hash_password(cur_p) != user.get("password_hash"):
+                    st.error("❌ كلمة المرور الحالية غير صحيحة.")
+                elif len(new_p1) < 4:
+                    st.error("❌ كلمة المرور الجديدة يجب أن تكون 4 أحرف/أرقام على الأقل.")
+                elif new_p1 != new_p2:
+                    st.error("❌ كلمة المرور الجديدة وتأكيدها غير متطابقين.")
+                else:
+                    new_h = hash_password(new_p1)
+                    supabase.table("users").update({"password_hash": new_h}).eq("id", int(user["id"])).execute()
+                    st.session_state.user["password_hash"] = new_h
+                    st.session_state.show_change_pass = False
+                    st.success("✅ تم تغيير كلمة المرور بنجاح!")
+                    st.rerun()
+
     if st.button("🚪 تسجيل الخروج", use_container_width=True):
         st.session_state.user = None
         st.rerun()
@@ -1012,7 +1081,7 @@ elif selected_page == "🔮 التنبؤ بكفاية المخزون الرئي�
         st.info("لا توجد بيانات مطابقة للفلاتر المختارة حالياً.")
 
 # =========================================================================
-# 4. شاشة مستقلة: شاشة الهدر (بالهدر المسموح به % ومنع التكرار المتشابه)
+# 4. شاشة مستقلة: شاشة الهدر
 # =========================================================================
 elif selected_page == "📉 شاشة الهدر":
     render_page_header("📉 شاشة الهدر")
@@ -1064,14 +1133,12 @@ elif selected_page == "📉 شاشة الهدر":
 
             w_notes = st.text_input("📝 ملاحظات / سبب الهدر (معايرة، كنترول، إعادة تحليل، إلخ - اختياري):", key="w_notes_input")
 
-            # حساب الكمية المسحوبة/المصروفة خلال الفترة المحددة
             cons_query = supabase.table("consumption_logs").select("tests_consumed, cost_incurred").eq("item_id", w_item_id).gte("consumed_at", str(w_from)).lte("consumed_at", str(w_to) + "T23:59:59")
             if w_loc_id is not None:
                 cons_query = cons_query.eq("location_id", w_loc_id)
             cons_rows = cons_query.execute().data or []
             issued_qty = sum(float(c.get("tests_consumed") or 0) for c in cons_rows)
 
-            # حساب الهدر المسموح به والأساس الفعلي بعد خصمه
             allowed_qty = issued_qty * (float(allowed_pct) / 100.0)
             net_expected_qty = issued_qty - allowed_qty
             wastage_qty = net_expected_qty - float(actual_tests)
@@ -1100,7 +1167,6 @@ elif selected_page == "📉 شاشة الهدر":
                 if w_from > w_to:
                     st.error("❌ تاريخ البداية يجب أن يكون قبل أو مساوياً لتاريخ النهاية.")
                 else:
-                    # التحقق من عدم وجود سجل متشابه تماماً (الصنف + الوحدة/الفرع + التاريخ + الكمية المسحوبة)
                     dup_q = supabase.table("wastage_logs").select("id").eq("item_id", w_item_id).eq("period_from", str(w_from)).eq("period_to", str(w_to)).eq("issued_qty", float(issued_qty))
                     if w_loc_id is None:
                         dup_q = dup_q.is_("location_id", "null")
@@ -2349,140 +2415,4 @@ elif selected_page == "⚙️ التكويد":
                 
                 sc1, sc2 = st.columns(2)
                 upd_sup_btn = sc1.form_submit_button("💾 حفظ تعديل الشركة", type="primary", use_container_width=True)
-                del_sup_btn = sc2.form_submit_button("🗑️ حذف الشركة", use_container_width=True)
-                
-                if upd_sup_btn:
-                    if new_s_name.strip():
-                        try:
-                            supabase.table("suppliers").update({
-                                "name": new_s_name.strip(),
-                                "contact_info": new_s_contact.strip()
-                            }).eq("id", int(cur_sup["id"])).execute()
-                            st.success("✅ تم تعديل بيانات الشركة بنجاح!")
-                            st.rerun()
-                        except Exception:
-                            st.error("اسم الشركة مستخدم بالفعل.")
-                            
-                if del_sup_btn:
-                    has_sup_batches = supabase.table("batches").select("id").eq("supplier_id", int(cur_sup["id"])).limit(1).execute()
-                    if has_sup_batches.data:
-                        st.error("❌ لا يمكن حذف هذه الشركة لأنها مرتبطة بفواتير توريد سابقة.")
-                    else:
-                        supabase.table("suppliers").delete().eq("id", int(cur_sup["id"])).execute()
-                        st.success("🗑️ تم حذف الشركة بنجاح!")
-                        st.rerun()
-
-            disp_sups = sups_df[["id", "name", "contact_info"]].copy()
-            disp_sups.columns = ["الكود", "اسم الشركة", "بيانات التواصل"]
-            df_to_styled_table(disp_sups)
-
-    with st3:
-        st.subheader("🏥 إدارة المخازن الفرعية ووحدات المعمل")
-        LOC_TYPE_LABELS = {
-            "branch": "فرع خارجي (مخزن فرعي)",
-            "unit": "وحدة داخلية بالمعمل",
-            "main": "المخزن الرئيسي"
-        }
-        
-        with st.expander("➕ إضافة مخزن فرعي أو وحدة جديدة", expanded=True):
-            with st.form("add_loc_form"):
-                lc1, lc2 = st.columns(2)
-                loc_name_new = lc1.text_input("اسم الفرع أو الوحدة (مثال: فرع مدينة نصر، وحدة الباثولوجي)")
-                loc_type_new = lc2.selectbox("نوع الموقع", ["branch", "unit"], format_func=lambda x: LOC_TYPE_LABELS[x])
-                
-                if st.form_submit_button("➕ إضافة المخزن الفرعي / الوحدة", type="primary"):
-                    if loc_name_new.strip():
-                        try:
-                            supabase.table("locations").insert({
-                                "name": loc_name_new.strip(),
-                                "location_type": loc_type_new
-                            }).execute()
-                            st.success(f"🎉 تم إضافة ({loc_name_new.strip()}) بنجاح!")
-                            st.rerun()
-                        except Exception:
-                            st.error("هذا الاسم مسجل بالفعل.")
-                    else:
-                        st.error("برجاء كتابة اسم الفرع أو الوحدة.")
-
-        st.divider()
-        locs_df = get_df("locations")
-        sub_locs_edit = locs_df[locs_df["location_type"] != "main"]
-        if not sub_locs_edit.empty:
-            st.subheader("✏️ تعديل أو حذف مخزن فرعي / وحدة")
-            sel_loc_edit = st.selectbox("اختر الفرع أو الوحدة:", sub_locs_edit["name"].tolist(), key="edit_loc_sel")
-            cur_loc = sub_locs_edit[sub_locs_edit["name"] == sel_loc_edit].iloc[0]
-            
-            with st.form("edit_loc_form"):
-                elc1, elc2 = st.columns(2)
-                upd_loc_name = elc1.text_input("اسم الفرع / الوحدة", value=cur_loc["name"])
-                t_opts = ["branch", "unit"]
-                upd_loc_type = elc2.selectbox("النوع", t_opts, index=t_opts.index(cur_loc["location_type"]), format_func=lambda x: LOC_TYPE_LABELS[x])
-                
-                lbc1, lbc2 = st.columns(2)
-                upd_loc_btn = lbc1.form_submit_button("💾 حفظ التعديل", type="primary", use_container_width=True)
-                del_loc_btn = lbc2.form_submit_button("🗑️ حذف الفرع / الوحدة", use_container_width=True)
-                
-                if upd_loc_btn and upd_loc_name.strip():
-                    try:
-                        supabase.table("locations").update({
-                            "name": upd_loc_name.strip(),
-                            "location_type": upd_loc_type
-                        }).eq("id", int(cur_loc["id"])).execute()
-                        st.success("✅ تم تعديل بيانات الموقع بنجاح!")
-                        st.rerun()
-                    except Exception:
-                        st.error("الاسم مستخدم بالفعل.")
-                        
-                if del_loc_btn:
-                    has_inv = supabase.table("inventory").select("id").eq("location_id", int(cur_loc["id"])).gt("tests_available", 0).limit(1).execute()
-                    if has_inv.data:
-                        st.error("❌ لا يمكن حذف هذا الفرع لأن لديه أرصدة متاحة حالياً.")
-                    else:
-                        supabase.table("locations").delete().eq("id", int(cur_loc["id"])).execute()
-                        st.success("🗑️ تم حذف الموقع بنجاح!")
-                        st.rerun()
-
-        disp_locs = locs_df[["id", "name", "location_type"]].copy()
-        disp_locs["location_type"] = disp_locs["location_type"].map(LOC_TYPE_LABELS)
-        disp_locs.columns = ["الكود", "اسم المخزن / الوحدة", "النوع"]
-        df_to_styled_table(disp_locs)
-
-# =========================================================================
-# 14. إدارة المستخدمين والصلاحيات
-# =========================================================================
-elif selected_page == "👥 إدارة المستخدمين والصلاحيات":
-    render_page_header("👥 إدارة المستخدمين والصلاحيات")
-    
-    locs_df = get_df("locations")
-    with st.form("create_user_form"):
-        c1, c2 = st.columns(2)
-        f_name = c1.text_input("الاسم الكامل للموظف")
-        u_name = c2.text_input("اسم الدخول (Username بالإنجليزية)")
-        u_pass = c1.text_input("كلمة المرور (Password)", type="password")
-        u_role = c2.selectbox("الصلاحية / الدور الوظيفي", list(ROLE_LABELS.keys()), format_func=lambda x: ROLE_LABELS[x])
-        u_loc = st.selectbox("الفرع / الوحدة التابع لها", locs_df["name"].tolist())
-        
-        if st.form_submit_button("✅ إنشاء الحساب", type="primary"):
-            if f_name and u_name and u_pass:
-                loc_id = int(locs_df[locs_df["name"] == u_loc].iloc[0]["id"])
-                try:
-                    supabase.table("users").insert({
-                        "full_name": f_name.strip(),
-                        "username": u_name.strip(),
-                        "password_hash": hash_password(u_pass),
-                        "role": u_role,
-                        "location_id": loc_id
-                    }).execute()
-                    st.success(f"🎉 تم إنشاء الحساب! ابعت للموظف البيانات دي:\n- **اسم الدخول:** `{u_name.strip()}`\n- **كلمة المرور:** `{u_pass}`")
-                except Exception:
-                    st.error("اسم المستخدم ده موجود قبل كده، اختار اسم تاني.")
-            else:
-                st.error("برجاء ملء جميع الحقول.")
-                
-    st.subheader("قائمة المستخدمين الحاليين")
-    users_df = get_df("users", "id, full_name, username, role, is_active")
-    if not users_df.empty:
-        users_df["role"] = users_df["role"].map(ROLE_LABELS)
-        users_df["is_active"] = users_df["is_active"].map({True: "نشط ✅", False: "موقوف ❌"})
-        users_df.columns = ["الكود", "الاسم الكامل", "اسم الدخول", "الصلاحية", "الحالة"]
-        df_to_styled_table(users_df)
+                del_sup_btn = sc2.form_submit_button("🗑️
