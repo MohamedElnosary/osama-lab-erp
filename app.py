@@ -42,8 +42,6 @@ html, body, .stApp, [data-testid="stMain"], .main .block-container {
 [data-testid="stDataFrame"], [data-testid="stDataFrame"] > div {
     direction: rtl !important;
     text-align: right !important;
-    border-radius: 12px !important;
-    overflow: hidden !important;
 }
 
 p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
@@ -70,6 +68,46 @@ p, span, label, h1, h2, h3, h4, h5, h6, div[data-testid="stMarkdownContainer"],
     font-weight: 800 !important;
     margin: 0 !important;
     padding: 0 !important;
+}
+
+/* شبكة جدول CSS Grid الموحدة بدون أي تكسر أو ظهور None */
+.grid-table-wrap {
+    width: 100%;
+    direction: rtl !important;
+    margin-bottom: 14px;
+}
+.grid-table-row {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 6px;
+    align-items: stretch;
+}
+.grid-hdr-box {
+    background: linear-gradient(90deg, #0e4d92 0%, #0284c7 100%);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 800;
+    padding: 11px 8px;
+    border-radius: 10px;
+    text-align: center !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.grid-cell-box {
+    background-color: #ffffff;
+    color: #0f172a;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 11px 8px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    text-align: center !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
+    word-break: break-word;
 }
 
 /* خلايا الصفوف التفاعلية */
@@ -282,34 +320,40 @@ def render_page_header(title_text: str):
     st.markdown(f'<div class="page-header-banner"><h1>{title_text}</h1></div>', unsafe_allow_html=True)
 
 def render_styled_table(headers: list, rows_data: list, row_bg_colors: list = None):
-    """رسم جدول نظيف وآمن عبر st.dataframe مع تلوين الصفوف ودعم القيم النصية أو الثنائيات"""
     if not rows_data or not headers:
         return
 
-    clean_cols = [str(h) if h is not None else "" for h in headers]
-    table_records = []
-    bg_list = []
+    num_cols = len(headers)
+    grid_tpl = f"repeat({num_cols}, minmax(0, 1fr))"
 
+    hdr_items = []
+    for h in headers:
+        h_txt = "" if h is None else str(h)
+        hdr_items.append(f'<div class="grid-hdr-box">{h_txt}</div>')
+    hdr_html = f'<div class="grid-table-row" style="grid-template-columns:{grid_tpl};">{"".join(hdr_items)}</div>'
+
+    body_rows_html = []
     for r_idx, r_item in enumerate(rows_data):
-        row_dict = {}
-        for c_idx, col_name in enumerate(clean_cols):
-            val = r_item[c_idx] if c_idx < len(r_item) else ""
-            if isinstance(val, tuple):
-                val = val[0] if len(val) > 0 else ""
-            row_dict[col_name] = "" if val is None else str(val)
-        table_records.append(row_dict)
-        bg_c = row_bg_colors[r_idx] if (row_bg_colors and r_idx < len(row_bg_colors) and row_bg_colors[r_idx]) else "#ffffff"
-        bg_list.append(str(bg_c))
+        bg_color = "#ffffff"
+        if row_bg_colors and r_idx < len(row_bg_colors) and row_bg_colors[r_idx]:
+            bg_color = str(row_bg_colors[r_idx])
 
-    df_tbl = pd.DataFrame(table_records, columns=clean_cols)
+        cell_items = []
+        for c_idx in range(num_cols):
+            cell_val = r_item[c_idx] if c_idx < len(r_item) else ""
+            if isinstance(cell_val, tuple):
+                raw_txt = cell_val[0] if len(cell_val) > 0 else ""
+                extra_st = cell_val[1] if len(cell_val) > 1 and cell_val[1] else ""
+            else:
+                raw_txt = cell_val
+                extra_st = ""
+            safe_txt = "" if raw_txt is None else str(raw_txt)
+            cell_items.append(f'<div class="grid-cell-box" style="background-color:{bg_color};{extra_st}">{safe_txt}</div>')
 
-    if any(c != "#ffffff" for c in bg_list):
-        def _style_row(row):
-            color_hex = bg_list[row.name] if row.name < len(bg_list) else "#ffffff"
-            return [f"background-color: {color_hex}; color: #0f172a; font-weight: 700;" for _ in row]
-        st.dataframe(df_tbl.style.apply(_style_row, axis=1), use_container_width=True, hide_index=True)
-    else:
-        st.dataframe(df_tbl, use_container_width=True, hide_index=True)
+        body_rows_html.append(f'<div class="grid-table-row" style="grid-template-columns:{grid_tpl};">{"".join(cell_items)}</div>')
+
+    full_html = f'<div class="grid-table-wrap">{hdr_html}{"".join(body_rows_html)}</div>'
+    st.markdown(full_html, unsafe_allow_html=True)
 
 def df_to_styled_table(df: pd.DataFrame):
     if df is None or df.empty:
@@ -1056,13 +1100,13 @@ elif selected_page == "↳ ⏳ تنبيهات تاريخ الصلاحية":
 
             sub_u = "اختبار" if it["sub_unit_name"] == "تست" else it["sub_unit_name"]
             exp_table_rows.append([
-                it["name"],
+                (it["name"], "font-weight:800;"),
                 cat_ar,
                 b["suppliers"]["name"] if b.get("suppliers") else "-",
                 loc_n,
                 b["lot_number"],
                 b["expiry_date"],
-                f"{days_left} يوم ({status_lbl})",
+                (f"{days_left} يوم ({status_lbl})", "font-weight:800;"),
                 f"{float(r['tests_available']):,.0f} {sub_u}"
             ])
             exp_row_colors.append(row_bg)
@@ -1188,12 +1232,12 @@ elif selected_page == "↳ 🔮 التنبؤ بكفاية المخزون الر�
 
         sub_u = "اختبار" if it["sub_unit_name"] == "تست" else it["sub_unit_name"]
         fc_rows.append([
-            it["name"],
+            (it["name"], "font-weight:800;"),
             cat_ar,
             f"{tot_stock:,.0f} {sub_u}",
             f"{rate:,.0f} {sub_u}",
-            str(months_disp),
-            status_txt
+            (str(months_disp), "font-weight:800;"),
+            (status_txt, "font-weight:800;")
         ])
         fc_colors.append(row_bg)
 
@@ -1363,12 +1407,12 @@ elif selected_page == "🏢 المخزن الرئيسي":
                 rate = k[4]
                 months_cov = round(v["tests"] / rate, 2) if rate > 0 else 0
                 agg_list.append([
-                    k[1],
+                    (k[1], "color:#0e4d92; font-weight:800;"),
                     "محاليل وكواشف" if k[2] == "reagent" else "مستهلكات",
                     " + ".join(v["companies"]),
                     f"{v['kits']:,.0f}",
-                    f"{v['tests']:,.0f}",
-                    k[3],
+                    (f"{v['tests']:,.0f}", "color:#0284c7; font-weight:800;"),
+                    (k[3], "color:#0d9488; font-weight:800;"),
                     f"{rate:,.0f}",
                     f"{months_cov} شهر" if rate > 0 else "غير محدد",
                     f"{v['value']:,.2f} ج.م"
@@ -1400,13 +1444,13 @@ elif selected_page == "🏢 المخزن الرئيسي":
                 sub_u = "اختبار" if it["sub_unit_name"] == "تست" else it["sub_unit_name"]
                 tot_val = float(r["tests_available"]) * float(b["unit_price_per_test"])
                 det_rows.append([
-                    it['name'],
+                    (it['name'], "color:#0e4d92; font-weight:800;"),
                     b["suppliers"]["name"],
                     b["lot_number"],
                     b["expiry_date"],
                     f"{float(r['kits_available']):,.0f}",
-                    f"{float(r['tests_available']):,.0f}",
-                    sub_u,
+                    (f"{float(r['tests_available']):,.0f}", "color:#0284c7; font-weight:800;"),
+                    (sub_u, "color:#0d9488; font-weight:800;"),
                     f"{float(b['unit_price_per_test']):,.2f}",
                     f"{tot_val:,.2f} ج.م"
                 ])
@@ -1589,13 +1633,13 @@ elif selected_page == "↳ 🛒 الطلبيات":
         styled_ord_rows = []
         for r_item in order_rows:
             styled_ord_rows.append([
-                r_item["الصنف"],
+                (r_item["الصنف"], "color:#0e4d92; font-weight:800;"),
                 r_item["التصنيف"],
                 f"{r_item['الاستهلاك الشهري']:,.0f}",
                 f"{r_item[f'الاحتياج لـ {months_cover} شهور']:,.0f}",
                 f"{r_item[stock_col_title]:,.0f}",
-                f"{r_item['العجز المطلوب شراؤه']:,.0f}",
-                r_item["الوحدة"]
+                (f"{r_item['العجز المطلوب شراؤه']:,.0f}", "color:#dc2626; font-weight:800;"),
+                (r_item["الوحدة"], "color:#0d9488; font-weight:800;")
             ])
         render_styled_table(ord_headers, styled_ord_rows)
 
@@ -2133,10 +2177,10 @@ elif selected_page == "📈 التقارير":
                 fin_tbl_rows = []
                 for _, fr in fin_grp.iterrows():
                     fin_tbl_rows.append([
-                        fr["الصنف"],
-                        f"{fr['إجمالي_الكمية']:,.0f}",
-                        f"{fr['إجمالي_التكلفة_جنيه']:,.2f} ج.م",
-                        f"{fr['متوسط_سعر_الاختبار']:,.2f} ج.م"
+                        (fr["الصنف"], "color:#0e4d92; font-weight:800;"),
+                        (f"{fr['إجمالي_الكمية']:,.0f}", "color:#0284c7; font-weight:800;"),
+                        (f"{fr['إجمالي_التكلفة_جنيه']:,.2f} ج.م", "color:#0d9488; font-weight:800;"),
+                        (f"{fr['متوسط_سعر_الاختبار']:,.2f} ج.م", "font-weight:800;")
                     ])
                 render_styled_table(
                     ["الصنف / التيست", "إجمالي الكمية", "إجمالي التكلفة", "متوسط سعر الاختبار"],
@@ -2205,10 +2249,10 @@ elif selected_page == "📈 التقارير":
                 sum_rows = []
                 for _, sr in summary.iterrows():
                     sum_rows.append([
-                        sr["الصنف"],
+                        (sr["الصنف"], "color:#0e4d92; font-weight:800;"),
                         sr["الشركة الموردة"],
-                        f"{sr['إجمالي_الكمية']:,.0f}",
-                        f"{sr['إجمالي_التكلفة_جنيه']:,.2f} ج.م",
+                        (f"{sr['إجمالي_الكمية']:,.0f}", "color:#0284c7; font-weight:800;"),
+                        (f"{sr['إجمالي_التكلفة_جنيه']:,.2f} ج.م", "color:#0d9488; font-weight:800;"),
                         f"{sr['متوسط_سعر_الاختبار']:,.2f} ج.م"
                     ])
                 render_styled_table(
@@ -2312,14 +2356,14 @@ elif selected_page == "📈 التقارير":
 
                 bg = "#fee2e2" if w_pct >= 15 else ("#fef9c3" if w_pct > 5 else "#ffffff")
                 w_rows_disp.append([
-                    it_n,
-                    loc_n,
+                    (it_n, "font-weight:800;"),
+                    (loc_n, "color:#0e4d92; font-weight:800;"),
                     f"{wr['period_from']} إلى {wr['period_to']}",
                     f"{float(wr.get('issued_qty') or 0):,.0f}",
                     f"{allow_pct:.0f}%",
                     f"{float(wr.get('actual_patient_tests') or 0):,.0f}",
-                    f"{w_qty:,.0f}",
-                    f"{w_pct:.1f}%",
+                    (f"{w_qty:,.0f}", "font-weight:800;"),
+                    (f"{w_pct:.1f}%", "font-weight:800;"),
                     f"{w_cost:,.2f} ج.م",
                     wr.get("notes") or "-"
                 ])
@@ -2768,6 +2812,7 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
             if not m_l.empty:
                 cur_u_loc_name = m_l.iloc[0]["name"]
 
+        # عرض الشاشات الحالية الظاهرة للمستخدم (سواء مخصصة أو الديفولت الخاصة بدوره)
         active_pages_for_u = [normalize_page_key(p) for p in get_effective_pages_for_user(cur_u) if normalize_page_key(p) in ALL_SYSTEM_PAGES]
 
         with st.container(border=True):
@@ -2793,6 +2838,7 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
                 key=f"u_pgs_{cur_u_id}"
             )
 
+            # عرض الشاشات الحالية مع زر ناقص (-) لحذف أي شاشة مباشرة
             if active_pages_for_u:
                 st.markdown("**الشاشات الحالية للمستخدم (اضغط ➖ لحذف شاشة):**")
                 p_cols = st.columns(min(len(active_pages_for_u), 3))
@@ -2853,10 +2899,10 @@ elif selected_page == "👥 إدارة المستخدمين والصلاحيات
         for _, ur in users_df.iterrows():
             u_pages_list = get_effective_pages_for_user(ur.to_dict())
             pages_summary = "، ".join(u_pages_list) if u_pages_list else "-"
-            act_txt = "نشط (Active) ✅" if ur.get("is_active", True) else "غير نشط (Inactive) ❌"
+            act_txt = ("نشط (Active) ✅", "color:#166534; font-weight:800;") if ur.get("is_active", True) else ("غير نشط (Inactive) ❌", "color:#991b1b; font-weight:800;")
             disp_u_rows.append([
                 str(ur["id"]),
-                str(ur["full_name"]),
+                (str(ur["full_name"]), "color:#0e4d92; font-weight:800;"),
                 str(ur["username"]),
                 ROLE_LABELS.get(ur["role"], ur["role"]),
                 loc_map_id.get(int(ur["location_id"]) if ur.get("location_id") else 1, "-"),
