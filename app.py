@@ -35,7 +35,7 @@ st.markdown("""
 <meta name="apple-mobile-web-app-title" content="المخازن">
 <meta name="application-name" content="المخازن">
 <link rel="manifest" href="./app/static/manifest.json">
-<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/<اسم_حسابك>/osama-lab-erp/main/static/lab-logo.png">
+<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/MohamedElnosary/osama-lab-erp/main/static/lab-logo.png">
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
