@@ -367,7 +367,7 @@ def df_to_styled_table(df: pd.DataFrame):
     render_styled_table(headers, rows_data)
 
 # =========================================================================
-# دالة توليد ملف PDF عام للتقارير والطلبيات
+# دالة توليد ملف PDF عام للتقارير والطلبيات وأذونات الصرف
 # =========================================================================
 @st.cache_resource
 def get_arabic_font_path():
@@ -485,6 +485,159 @@ def render_export_buttons(df_export: pd.DataFrame, base_filename: str, report_ti
             use_container_width=True,
             key=f"{key_prefix}_pdf"
         )
+
+def issue_transfer_request_by_id(req_id: int, actor_id: int):
+    """تنفيذ صرف إذن معتمد وخصمه من المخزن الرئيسي وترحيله للمخزن الفرعي/الوحدة"""
+    req_rows = supabase.table("transfer_requests").select("*").eq("id", int(req_id)).execute().data or []
+    if not req_rows:
+        return False
+    req = req_rows[0]
+    if req.get("status") != "approved_ready_to_issue":
+        return False
+
+    m_inv_list = supabase.table("inventory").select("*").eq("location_id", 1).eq("batch_id", req["batch_id"]).execute().data or []
+    if m_inv_list:
+        m_inv = m_inv_list[0]
+        new_m_kits = float(m_inv["kits_available"]) - float(req["kits_requested"])
+        new_m_tests = float(m_inv["tests_available"]) - float(req["tests_requested"])
+        supabase.table("inventory").update({
+            "kits_available": max(0.0, new_m_kits),
+            "tests_available": max(0.0, new_m_tests)
+        }).eq("id", m_inv["id"]).execute()
+
+    sub_inv_res = supabase.table("inventory").select("*").eq("location_id", req["to_location_id"]).eq("batch_id", req["batch_id"]).execute().data or []
+    if sub_inv_res:
+        s_inv = sub_inv_res[0]
+        supabase.table("inventory").update({
+            "kits_available": float(s_inv["kits_available"]) + float(req["kits_requested"]),
+            "tests_available": float(s_inv["tests_available"]) + float(req["tests_requested"])
+        }).eq("id", s_inv["id"]).execute()
+    else:
+        supabase.table("inventory").insert({
+            "location_id": req["to_location_id"],
+            "batch_id": req["batch_id"],
+            "kits_available": float(req["kits_requested"]),
+            "tests_available": float(req["tests_requested"])
+        }).execute()
+
+    supabase.table("transfer_requests").update({
+        "status": "issued",
+        "issued_by": int(actor_id),
+        "issued_at": datetime.now().isoformat()
+    }).eq("id", int(req_id)).execute()
+    return True
+
+def render_approved_requests_storekeeper_view(key_prefix: str = "sk_app"):
+    """عرض الأذونات المعتمدة من المدير العام مع فلتر + تصدير PDF أولاً ثم زر الصرف/الموافقة"""
+    approved_res = supabase.table("transfer_requests").select(
+        "*, locations!transfer_requests_to_location_id_fkey(name), items(name, variant, unit_name, sub_unit_name), suppliers(name), batches(lot_number, expiry_date, tests_per_kit)"
+    ).eq("status", "approved_ready_to_issue").execute()
+    all_approved = approved_res.data or []
+
+    if not all_approved:
+        st.info("✅ لا توجد أذونات صرف معتمدة من المدير العام بانتظار الصرف حالياً.")
+        return
+
+    f_col1, f_col2 = st.columns(2)
+    with f_col1:
+        loc_opts = ["الكل"] + sorted(list({r["locations"]["name"] for r in all_approved if r.get("locations")}))
+        sel_loc = st.selectbox("🏥 تصفية حسب الوحدة / الفرع:", loc_opts, key=f"{key_prefix}_loc_flt")
+    with f_col2:
+        loc_sub_list = [r for r in all_approved if sel_loc == "الكل" or (r.get("locations") and r["locations"]["name"] == sel_loc)]
+        item_opts = ["الكل"] + sorted(list({r["items"]["name"] for r in loc_sub_list if r.get("items")}))
+        sel_item = st.selectbox("🧪 تصفية حسب الصنف:", item_opts, key=f"{key_prefix}_item_flt")
+
+    filtered_approved = [
+        r for r in loc_sub_list
+        if sel_item == "الكل" or (r.get("items") and r["items"]["name"] == sel_item)
+    ]
+
+    if not filtered_approved:
+        st.warning("لا توجد طلبات مطابقة للفلاتر المختارة.")
+        return
+
+    # تجهيز جدول للطباعة PDF / Excel قبل تنفيذ الصرف
+    export_rows = []
+    for req in filtered_approved:
+        sub_u = "اختبار" if req["items"].get("sub_unit_name") == "تست" else (req["items"].get("sub_unit_name") or "اختبار")
+        export_rows.append({
+            "الوحدة / الفرع": req["locations"]["name"],
+            "الصنف": req["items"]["name"],
+            "الشركة": req["suppliers"]["name"],
+            "الكمية المعتمدة": f"{req['kits_requested']} {req['items']['unit_name']} ({req['tests_requested']} {sub_u})",
+            "رقم التشغيلة": req["batches"]["lot_number"],
+            "الصلاحية": req["batches"]["expiry_date"]
+        })
+    df_app_export = pd.DataFrame(export_rows)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    # 1. أزرار الطباعة/التحميل PDF و Excel بناءً على الفلتر أولاً
+    dl_c1, dl_c2 = st.columns(2)
+    with dl_c1:
+        st.download_button(
+            "📄 طباعة / تحميل أذونات الصرف المفلترة (PDF)",
+            data=generate_pdf_report(
+                df_app_export,
+                "أذونات الصرف المعتمدة للطباعة",
+                f"الجهة: {sel_loc} | الصنف: {sel_item} | التاريخ: {date.today()}"
+            ),
+            file_name=f"approved_transfers_{sel_loc}_{sel_item}_{date.today()}.pdf",
+            mime="application/pdf",
+            type="secondary",
+            use_container_width=True,
+            key=f"{key_prefix}_pdf_btn"
+        )
+    with dl_c2:
+        st.download_button(
+            "📥 تحميل أذونات الصرف المفلترة (Excel / CSV)",
+            data=df_app_export.to_csv(index=False).encode("utf-8-sig"),
+            file_name=f"approved_transfers_{sel_loc}_{sel_item}_{date.today()}.csv",
+            mime="text/csv",
+            type="primary",
+            use_container_width=True,
+            key=f"{key_prefix}_csv_btn"
+        )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # 2. عرض الجدول وبجانب كل صف زر الموافقة / تنفيذ الصرف بعد الطباعة
+    app_widths = [1.5, 1.3, 1.1, 1.5, 1.1, 1.1, 1.4]
+    app_headers = ["صرف إلى", "الصنف", "الشركة", "الكمية المعتمدة", "رقم التشغيلة", "الصلاحية", "تنفيذ الصرف"]
+    a_hdr_cols = st.columns(app_widths)
+    for idx, h_t in enumerate(app_headers):
+        with a_hdr_cols[idx]:
+            st.markdown(f"<div class='tbl-hdr-cell'>{h_t}</div>", unsafe_allow_html=True)
+
+    for req in filtered_approved:
+        sub_u = "اختبار" if req["items"].get("sub_unit_name") == "تست" else (req["items"].get("sub_unit_name") or "اختبار")
+        qty_disp = f"{req['kits_requested']} {req['items']['unit_name']} ({req['tests_requested']} {sub_u})"
+
+        r_cols = st.columns(app_widths)
+        with r_cols[0]:
+            st.markdown(f"<div class='tbl-row-cell' style='color:#0e4d92;'>{req['locations']['name']}</div>", unsafe_allow_html=True)
+        with r_cols[1]:
+            st.markdown(f"<div class='tbl-row-cell'>{req['items']['name']}</div>", unsafe_allow_html=True)
+        with r_cols[2]:
+            st.markdown(f"<div class='tbl-row-cell'>{req['suppliers']['name']}</div>", unsafe_allow_html=True)
+        with r_cols[3]:
+            st.markdown(f"<div class='tbl-row-cell' style='color:#0284c7;'>{qty_disp}</div>", unsafe_allow_html=True)
+        with r_cols[4]:
+            st.markdown(f"<div class='tbl-row-cell' dir='ltr'>{req['batches']['lot_number']}</div>", unsafe_allow_html=True)
+        with r_cols[5]:
+            st.markdown(f"<div class='tbl-row-cell' dir='ltr'>{req['batches']['expiry_date']}</div>", unsafe_allow_html=True)
+        with r_cols[6]:
+            if st.button("✅ موافقة وصرف", key=f"{key_prefix}_iss_{req['id']}", type="primary", use_container_width=True):
+                if issue_transfer_request_by_id(int(req["id"]), int(user["id"])):
+                    st.success("🎉 تم الصرف وخصم الكمية من المخزن الرئيسي وترحيلها بنجاح!")
+                    st.rerun()
+
+    if len(filtered_approved) > 1:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button(f"✅ موافقة وصرف All ({len(filtered_approved)} طلب مفلتر)", type="primary", use_container_width=True, key=f"{key_prefix}_iss_all"):
+            for req in filtered_approved:
+                issue_transfer_request_by_id(int(req["id"]), int(user["id"]))
+            st.success(f"🎉 تم تنفيذ وصرف {len(filtered_approved)} طلب بنجاح!")
+            st.rerun()
 
 # =========================================================================
 # الاتصال بقاعدة البيانات السحابية Supabase
@@ -1594,66 +1747,11 @@ elif selected_page == "📥 إضافة فاتورة":
                     st.success(f"🎉 تم إضافة {kits_qty} {selected_item['unit_name']} ({total_tests} {sub_u}) بنجاح إلى المخزن الرئيسي!")
 
 # =========================================================================
-# 9. أذونات الصرف المعتمدة
+# 9. أذونات الصرف المعتمدة (شاشة أمين المخزن: فلتر + PDF أولاً ثم زر الصرف)
 # =========================================================================
 elif selected_page.startswith("📦 أذونات الصرف المعتمدة"):
     render_page_header("📦 أذونات الصرف المعتمدة من المدير العام")
-    
-    approved = supabase.table("transfer_requests").select("*, locations!transfer_requests_to_location_id_fkey(name), items(name, variant, unit_name), suppliers(name), batches(lot_number, expiry_date, tests_per_kit)").eq("status", "approved_ready_to_issue").execute()
-    if not approved.data:
-        st.info("✅ لا توجد أذونات صرف معتمدة من المدير العام بانتظار الصرف حالياً.")
-    else:
-        st.success(f"🔔 لديك **{len(approved.data)}** إذن صرف معتمد من المدير العام وجاهز للتسليم للمخازن الفرعية/الوحدات:")
-        app_widths = [1.5, 1.3, 1.2, 1.5, 1.1, 1.1, 1.3]
-        app_headers = ["صرف إلى", "الصنف", "الشركة", "الكمية المعتمدة", "رقم التشغيلة", "الصلاحية", "الإجراء"]
-        a_hdr_cols = st.columns(app_widths)
-        for idx, h_t in enumerate(app_headers):
-            with a_hdr_cols[idx]:
-                st.markdown(f"<div class='tbl-hdr-cell'>{h_t}</div>", unsafe_allow_html=True)
-
-        for req in approved.data:
-            r_cols = st.columns(app_widths)
-            with r_cols[0]:
-                st.markdown(f"<div class='tbl-row-cell' style='color:#0e4d92;'>{req['locations']['name']}</div>", unsafe_allow_html=True)
-            with r_cols[1]:
-                st.markdown(f"<div class='tbl-row-cell'>{req['items']['name']}</div>", unsafe_allow_html=True)
-            with r_cols[2]:
-                st.markdown(f"<div class='tbl-row-cell'>{req['suppliers']['name']}</div>", unsafe_allow_html=True)
-            with r_cols[3]:
-                st.markdown(f"<div class='tbl-row-cell' style='color:#0284c7;'>{req['kits_requested']} {req['items']['unit_name']} ({req['tests_requested']} اختبار)</div>", unsafe_allow_html=True)
-            with r_cols[4]:
-                st.markdown(f"<div class='tbl-row-cell' dir='ltr'>{req['batches']['lot_number']}</div>", unsafe_allow_html=True)
-            with r_cols[5]:
-                st.markdown(f"<div class='tbl-row-cell' dir='ltr'>{req['batches']['expiry_date']}</div>", unsafe_allow_html=True)
-            with r_cols[6]:
-                if st.button("📦 تنفيذ الصرف", key=f"iss_store_{req['id']}", type="primary", use_container_width=True):
-                    m_inv = supabase.table("inventory").select("*").eq("location_id", 1).eq("batch_id", req["batch_id"]).execute().data[0]
-                    new_m_kits = float(m_inv["kits_available"]) - req["kits_requested"]
-                    new_m_tests = float(m_inv["tests_available"]) - req["tests_requested"]
-                    supabase.table("inventory").update({"kits_available": max(0, new_m_kits), "tests_available": max(0, new_m_tests)}).eq("id", m_inv["id"]).execute()
-                    
-                    sub_inv_res = supabase.table("inventory").select("*").eq("location_id", req["to_location_id"]).eq("batch_id", req["batch_id"]).execute()
-                    if sub_inv_res.data:
-                        s_inv = sub_inv_res.data[0]
-                        supabase.table("inventory").update({
-                            "kits_available": float(s_inv["kits_available"]) + req["kits_requested"],
-                            "tests_available": float(s_inv["tests_available"]) + req["tests_requested"]
-                        }).eq("id", s_inv["id"]).execute()
-                    else:
-                        supabase.table("inventory").insert({
-                            "location_id": req["to_location_id"],
-                            "batch_id": req["batch_id"],
-                            "kits_available": float(req["kits_requested"]),
-                            "tests_available": float(req["tests_requested"])
-                        }).execute()
-                    
-                    supabase.table("transfer_requests").update({
-                        "status": "issued",
-                        "issued_by": user["id"],
-                        "issued_at": datetime.now().isoformat()
-                    }).eq("id", req["id"]).execute()
-                    st.success("🎉 تم الصرف والتحويل للمخزن الفرعي بنجاح!")
-                    st.rerun()
+    render_approved_requests_storekeeper_view(key_prefix="sk_main_app")
 
 # =========================================================================
 # 10. أذونات الصرف
@@ -1661,7 +1759,7 @@ elif selected_page.startswith("📦 أذونات الصرف المعتمدة"):
 elif selected_page == "🔄 أذونات الصرف":
     render_page_header("🔄 أذونات الصرف")
     
-    t1, t2 = st.tabs(["📝 إنشاء إذن صرف جديد (للوحدات والفروع)", "📦 أذونات الصرف المعتمدة (تنفيذ الصرف)"])
+    t1, t2 = st.tabs(["📝 إنشاء إذن صرف جديد (للوحدات والفروع)", "📦 أذونات الصرف المعتمدة (طباعة PDF وتنفيذ الصرف)"])
     
     with t1:
         st.subheader("طلب صرف من المخزن الرئيسي")
@@ -1737,47 +1835,8 @@ elif selected_page == "🔄 أذونات الصرف":
                     st.error(f"❌ لا يوجد رصيد متاح في المخزن الرئيسي من ({sel_item['name']}) لشركة ({sel_sup['name']}).")
 
     with t2:
-        st.subheader("أذونات الصرف المعتمدة وجاهزة للتحويل للمخازن الفرعية")
-        approved = supabase.table("transfer_requests").select("*, locations!transfer_requests_to_location_id_fkey(name), items(name, variant, unit_name), suppliers(name), batches(lot_number, expiry_date, tests_per_kit)").eq("status", "approved_ready_to_issue").execute()
-        if not approved.data:
-            st.info("لا توجد أذونات صرف معتمدة بانتظار التنفيذ.")
-        else:
-            for req in approved.data:
-                with st.container(border=True):
-                    c1, c2 = st.columns([4, 1])
-                    with c1:
-                        st.markdown(f"**صرف إلى:** {req['locations']['name']} | **الصنف:** {req['items']['name']} - **{req['suppliers']['name']}**")
-                        st.caption(f"الكمية المعتمدة: **{req['kits_requested']}** {req['items']['unit_name']} | رقم التشغيلة: `{req['batches']['lot_number']}`")
-                    with c2:
-                        if role in ["main_storekeeper", "general_manager", "chairman"]:
-                            if st.button("📦 تنفيذ الصرف الآن", key=f"iss_{req['id']}", type="primary"):
-                                m_inv = supabase.table("inventory").select("*").eq("location_id", 1).eq("batch_id", req["batch_id"]).execute().data[0]
-                                new_m_kits = float(m_inv["kits_available"]) - req["kits_requested"]
-                                new_m_tests = float(m_inv["tests_available"]) - req["tests_requested"]
-                                supabase.table("inventory").update({"kits_available": max(0, new_m_kits), "tests_available": max(0, new_m_tests)}).eq("id", m_inv["id"]).execute()
-                                
-                                sub_inv_res = supabase.table("inventory").select("*").eq("location_id", req["to_location_id"]).eq("batch_id", req["batch_id"]).execute()
-                                if sub_inv_res.data:
-                                    s_inv = sub_inv_res.data[0]
-                                    supabase.table("inventory").update({
-                                        "kits_available": float(s_inv["kits_available"]) + req["kits_requested"],
-                                        "tests_available": float(s_inv["tests_available"]) + req["tests_requested"]
-                                    }).eq("id", s_inv["id"]).execute()
-                                else:
-                                    supabase.table("inventory").insert({
-                                        "location_id": req["to_location_id"],
-                                        "batch_id": req["batch_id"],
-                                        "kits_available": float(req["kits_requested"]),
-                                        "tests_available": float(req["tests_requested"])
-                                    }).execute()
-                                
-                                supabase.table("transfer_requests").update({
-                                    "status": "issued",
-                                    "issued_by": user["id"],
-                                    "issued_at": datetime.now().isoformat()
-                                }).eq("id", req["id"]).execute()
-                                st.success("تم الصرف والتحويل بنجاح!")
-                                st.rerun()
+        st.subheader("أذونات الصرف المعتمدة وجاهزة للطباعة والصرف")
+        render_approved_requests_storekeeper_view(key_prefix="tr_tab2_app")
 
 # =========================================================================
 # 11. الموافقات
