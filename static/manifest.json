@@ -1,6 +1,6 @@
 {
-  "name": "معامل أ.د/ أسامة عبدالمتعال",
-  "short_name": "معامل د. أسامة",
+  "name": "المخازن",
+  "short_name": "المخازن",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -10,10 +10,16 @@
   "lang": "ar",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",
-      "sizes": "512x512",
+      "src": "https://raw.githubusercontent.com/osama-lab-erp/main/static/lab-logo.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/osama-lab-erp/main/static/lab-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
