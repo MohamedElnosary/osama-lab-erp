@@ -32,9 +32,10 @@ st.markdown("""
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="معامل أسامة">
+<meta name="apple-mobile-web-app-title" content="المخازن">
+<meta name="application-name" content="المخازن">
 <link rel="manifest" href="./app/static/manifest.json">
-<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2966/2966327.png">
+<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/<اسم_حسابك>/osama-lab-erp/main/static/lab-logo.png">
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
