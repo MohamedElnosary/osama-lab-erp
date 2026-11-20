@@ -628,7 +628,8 @@ ROLE_LABELS = {
     "chairman": "رئيس مجلس الإدارة",
     "general_manager": "المدير العام",
     "main_storekeeper": "أمين المخزن الرئيسي",
-    "unit_supervisor": "مشرف وحدة / فرع"
+    "unit_supervisor": "مشرف وحدة / فرع",
+    "employee": "موظف"
 }
 
 def get_default_pages_for_role(r_name: str, badge_txt: str = "") -> list:
@@ -657,6 +658,10 @@ def get_default_pages_for_role(r_name: str, badge_txt: str = "") -> list:
             "📈 التقارير",
             "⚙️ التكويد",
             "👥 إدارة المستخدمين والصلاحيات"
+        ]
+    elif r_name == "employee":
+        return [
+            "🧪 المخازن الفرعية"
         ]
     else:
         return [
@@ -862,7 +867,7 @@ elif selected_page == "⏳ تنبيهات تاريخ الصلاحية":
     ).gt("tests_available", 0).execute()
     all_inv_rows = inv_res.data or []
 
-    if role == "unit_supervisor" and user_loc_id != 1:
+    if role in ["unit_supervisor", "employee"] and user_loc_id != 1:
         scoped_rows = [r for r in all_inv_rows if int(r["location_id"]) == int(user_loc_id)]
         st.markdown(f"<h3 class='section-center-title'>🏥 صلاحيات مخزن: {user_loc_name}</h3>", unsafe_allow_html=True)
         ef2, ef3 = st.columns(2)
@@ -955,7 +960,7 @@ elif selected_page == "⏳ تنبيهات تاريخ الصلاحية":
 # 3. شاشة مستقلة: التنبؤ بكفاية المخزون الرئيسي / المخزن الفرعي
 # =========================================================================
 elif selected_page == "🔮 التنبؤ بكفاية المخزون الرئيسي":
-    is_sub_only = (role == "unit_supervisor" and user_loc_id != 1)
+    is_sub_only = (role in ["unit_supervisor", "employee"] and user_loc_id != 1)
     header_title = f"🔮 التنبؤ بكفاية مخزن ({user_loc_name})" if is_sub_only else "🔮 التنبؤ بكفاية المخزون الرئيسي"
     render_page_header(header_title)
 
@@ -1100,7 +1105,7 @@ elif selected_page == "📉 شاشة الهدر":
                 w_item_id = int(sel_w_item["id"])
                 w_sub_u = "اختبار" if sel_w_item["sub_unit_name"] == "تست" else sel_w_item["sub_unit_name"]
 
-                if role == "unit_supervisor" and user_loc_id != 1:
+                if role in ["unit_supervisor", "employee"] and user_loc_id != 1:
                     w_loc_label = user_loc_name
                     w_loc_id = int(user_loc_id)
                     st.text_input("🏥 الوحدة / الفرع:", value=w_loc_label, disabled=True)
@@ -1671,7 +1676,7 @@ elif selected_page == "🔄 أذونات الصرف":
         else:
             c1, c2 = st.columns(2)
             with c1:
-                if role == "unit_supervisor" and user_loc_id != 1:
+                if role in ["unit_supervisor", "employee"] and user_loc_id != 1:
                     target_loc_id = user_loc_id
                     st.text_input("الوحدة / الفرع الطالب", value=user_loc_name, disabled=True)
                 else:
